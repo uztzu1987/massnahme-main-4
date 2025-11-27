@@ -205,10 +205,10 @@ class MGC_Simple_PDF {
             '™' => '\231',
             '–' => '\226',  // en-dash
             '—' => '\227',  // em-dash
-            ''' => '\222',  // right single quote
-            ''' => '\221',  // left single quote
-            '"' => '\223',  // left double quote
-            '"' => '\224',  // right double quote
+            "\xe2\x80\x99" => '\222',  // right single quote '
+            "\xe2\x80\x98" => '\221',  // left single quote '
+            "\xe2\x80\x9c" => '\223',  // left double quote "
+            "\xe2\x80\x9d" => '\224',  // right double quote "
             '•' => '\225',  // bullet
             '…' => '\205',  // ellipsis
         ];
