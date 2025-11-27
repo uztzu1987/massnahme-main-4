@@ -1139,7 +1139,10 @@ table code {
     }
 
     function formatCurrency(amount) {
-        return '€' + parseFloat(amount).toFixed(2).replace('.', ',');
+        return new Intl.NumberFormat('de-DE', {
+            style: 'currency',
+            currency: mgc_admin.currency || 'EUR'
+        }).format(parseFloat(amount));
     }
 
     // Save balance
