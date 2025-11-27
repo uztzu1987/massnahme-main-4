@@ -29,6 +29,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     <div class="mgc-fd-tabs">
         <button class="mgc-fd-tab active" data-tab="overview"><?php _e('Overview', 'massnahme-gift-cards'); ?></button>
         <button class="mgc-fd-tab" data-tab="all-cards"><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></button>
+        <button class="mgc-fd-tab" data-tab="transactions"><?php _e('Transaction History', 'massnahme-gift-cards'); ?></button>
         <button class="mgc-fd-tab" data-tab="create"><?php _e('Create Gift Card', 'massnahme-gift-cards'); ?></button>
     </div>
 
@@ -73,6 +74,27 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
 
+        <!-- Search and Filter -->
+        <div class="mgc-fd-filters">
+            <div class="mgc-fd-search-wrap">
+                <input type="text" id="mgc-fd-search" placeholder="<?php esc_attr_e('Search by code, recipient...', 'massnahme-gift-cards'); ?>" class="mgc-fd-search-input">
+            </div>
+            <div class="mgc-fd-filter-wrap">
+                <select id="mgc-fd-filter-status" class="mgc-fd-filter-select">
+                    <option value=""><?php _e('All Statuses', 'massnahme-gift-cards'); ?></option>
+                    <option value="active"><?php _e('Active', 'massnahme-gift-cards'); ?></option>
+                    <option value="used"><?php _e('Used', 'massnahme-gift-cards'); ?></option>
+                </select>
+                <select id="mgc-fd-filter-type" class="mgc-fd-filter-select">
+                    <option value=""><?php _e('All Types', 'massnahme-gift-cards'); ?></option>
+                    <option value="digital"><?php _e('Digital', 'massnahme-gift-cards'); ?></option>
+                    <option value="physical"><?php _e('Physical', 'massnahme-gift-cards'); ?></option>
+                    <option value="pickup"><?php _e('Pickup', 'massnahme-gift-cards'); ?></option>
+                    <option value="shipping"><?php _e('Shipping', 'massnahme-gift-cards'); ?></option>
+                </select>
+            </div>
+        </div>
+
         <div id="mgc-fd-cards-loading" class="mgc-fd-loading">
             <?php _e('Loading gift cards...', 'massnahme-gift-cards'); ?>
         </div>
@@ -85,6 +107,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                         <th><?php _e('Code', 'massnahme-gift-cards'); ?></th>
                         <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
                         <th><?php _e('Balance', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Recipient', 'massnahme-gift-cards'); ?></th>
                         <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
                         <th><?php _e('Status', 'massnahme-gift-cards'); ?></th>
                         <th><?php _e('Created', 'massnahme-gift-cards'); ?></th>
@@ -98,6 +121,55 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         </div>
 
         <p id="mgc-fd-no-cards" style="display: none;"><?php _e('No gift cards found.', 'massnahme-gift-cards'); ?></p>
+    </div>
+
+    <!-- Transaction History Tab -->
+    <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-transactions">
+        <div class="mgc-fd-cards-header">
+            <h3><?php _e('Transaction History', 'massnahme-gift-cards'); ?></h3>
+            <button class="mgc-fd-btn mgc-fd-btn-primary mgc-fd-btn-sm" id="mgc-fd-refresh-transactions">
+                <?php _e('Refresh', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+
+        <!-- Transaction Filters -->
+        <div class="mgc-fd-filters">
+            <div class="mgc-fd-search-wrap">
+                <input type="text" id="mgc-fd-transaction-search" placeholder="<?php esc_attr_e('Search by gift card code...', 'massnahme-gift-cards'); ?>" class="mgc-fd-search-input">
+            </div>
+            <div class="mgc-fd-filter-wrap">
+                <select id="mgc-fd-filter-user" class="mgc-fd-filter-select">
+                    <option value=""><?php _e('All Users', 'massnahme-gift-cards'); ?></option>
+                </select>
+            </div>
+        </div>
+
+        <div id="mgc-fd-transactions-loading" class="mgc-fd-loading">
+            <?php _e('Loading transactions...', 'massnahme-gift-cards'); ?>
+        </div>
+
+        <div id="mgc-fd-transactions-table-wrap" style="display: none;">
+            <table class="mgc-fd-table" id="mgc-fd-transactions-table">
+                <thead>
+                    <tr>
+                        <th><?php _e('ID', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Gift Card', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Balance After', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('User ID', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('User Name', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Order', 'massnahme-gift-cards'); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="mgc-fd-transactions-tbody"></tbody>
+            </table>
+
+            <div id="mgc-fd-transactions-pagination" class="mgc-fd-pagination"></div>
+        </div>
+
+        <p id="mgc-fd-no-transactions" style="display: none;"><?php _e('No transactions found.', 'massnahme-gift-cards'); ?></p>
     </div>
 
     <!-- Create Card Tab -->
@@ -235,7 +307,8 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                             <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
-                            <th><?php _e('Updated By', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('User ID', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('User Name', 'massnahme-gift-cards'); ?></th>
                         </tr>
                     </thead>
                     <tbody id="mgc-detail-history-tbody"></tbody>
@@ -829,6 +902,96 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     margin: 0;
 }
 
+/* Filters */
+.mgc-fd-filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.mgc-fd-search-wrap {
+    flex: 1;
+    min-width: 200px;
+}
+
+.mgc-fd-search-input {
+    width: 100%;
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.mgc-fd-search-input:focus {
+    border-color: #2271b1;
+    outline: none;
+}
+
+.mgc-fd-filter-wrap {
+    display: flex;
+    gap: 10px;
+}
+
+.mgc-fd-filter-select {
+    padding: 10px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    cursor: pointer;
+    min-width: 140px;
+}
+
+.mgc-fd-filter-select:focus {
+    border-color: #2271b1;
+    outline: none;
+}
+
+/* Transaction type badges */
+.mgc-fd-tx-type {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.mgc-fd-tx-type-redemption {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.mgc-fd-tx-type-creation {
+    background: #d4edda;
+    color: #155724;
+}
+
+.mgc-fd-tx-type-adjustment {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+/* User ID badge */
+.mgc-fd-user-id {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #495057;
+}
+
+/* History table user columns */
+.mgc-fd-history-table th,
+.mgc-fd-history-table td {
+    font-size: 13px;
+    padding: 10px 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .mgc-fd-tabs {
@@ -857,6 +1020,23 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     .mgc-fd-table td {
         padding: 8px 10px;
     }
+
+    .mgc-fd-filters {
+        flex-direction: column;
+    }
+
+    .mgc-fd-filter-wrap {
+        flex-wrap: wrap;
+    }
+
+    .mgc-fd-filter-select {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .mgc-fd-table-responsive {
+        overflow-x: auto;
+    }
 }
 </style>
 
@@ -868,6 +1048,9 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     var nonce = '<?php echo wp_create_nonce('mgc_frontend_nonce'); ?>';
     var currencySymbol = '<?php echo esc_js($currency_symbol); ?>';
     var currentPage = 1;
+    var currentTransactionPage = 1;
+    var searchTimeout = null;
+    var transactionSearchTimeout = null;
 
     function formatCurrency(amount) {
         return currencySymbol + parseFloat(amount).toFixed(2).replace('.', ',');
@@ -883,6 +1066,8 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
         if (tab === 'all-cards') {
             loadCards(1);
+        } else if (tab === 'transactions') {
+            loadTransactions(1);
         }
     });
 
@@ -953,17 +1138,24 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         $('#mgc-fd-success-modal').hide();
     });
 
-    // Load cards
+    // Load cards with filters
     function loadCards(page) {
         currentPage = page;
         $('#mgc-fd-cards-loading').show();
         $('#mgc-fd-cards-table-wrap').hide();
         $('#mgc-fd-no-cards').hide();
 
+        var search = $('#mgc-fd-search').val();
+        var filterStatus = $('#mgc-fd-filter-status').val();
+        var filterType = $('#mgc-fd-filter-type').val();
+
         $.post(ajaxUrl, {
             action: 'mgc_frontend_list_cards',
             nonce: nonce,
-            page: page
+            page: page,
+            search: search,
+            status: filterStatus,
+            delivery_method: filterType
         }, function(response) {
             $('#mgc-fd-cards-loading').hide();
 
@@ -973,8 +1165,9 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
                 $.each(response.data.cards, function(i, card) {
                     var typeClass = card.delivery_method === 'physical' ? 'physical' : 'digital';
-                    var typeLabel = card.delivery_method === 'physical' ? '<?php _e('Physical', 'massnahme-gift-cards'); ?>' : '<?php _e('Digital', 'massnahme-gift-cards'); ?>';
+                    var typeLabel = getTypeLabel(card.delivery_method);
                     var statusClass = card.status;
+                    var recipient = card.recipient_name || card.recipient_email || '-';
 
                     $tbody.append(
                         '<tr>' +
@@ -982,6 +1175,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                         '<td><code>' + card.code + '</code></td>' +
                         '<td>' + card.formatted_amount + '</td>' +
                         '<td>' + card.formatted_balance + '</td>' +
+                        '<td>' + escapeHtml(recipient) + '</td>' +
                         '<td><span class="mgc-fd-type mgc-fd-type-' + typeClass + '">' + typeLabel + '</span></td>' +
                         '<td><span class="mgc-fd-status mgc-fd-status-' + statusClass + '">' + card.status.charAt(0).toUpperCase() + card.status.slice(1) + '</span></td>' +
                         '<td>' + card.created_at + '</td>' +
@@ -1003,6 +1197,137 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             }
         });
     }
+
+    function getTypeLabel(type) {
+        var labels = {
+            'digital': '<?php _e('Digital', 'massnahme-gift-cards'); ?>',
+            'physical': '<?php _e('Physical', 'massnahme-gift-cards'); ?>',
+            'pickup': '<?php _e('Pickup', 'massnahme-gift-cards'); ?>',
+            'shipping': '<?php _e('Shipping', 'massnahme-gift-cards'); ?>'
+        };
+        return labels[type] || type;
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Search with debounce
+    $('#mgc-fd-search').on('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            loadCards(1);
+        }, 300);
+    });
+
+    // Filter changes
+    $('#mgc-fd-filter-status, #mgc-fd-filter-type').on('change', function() {
+        loadCards(1);
+    });
+
+    // Load transactions
+    function loadTransactions(page) {
+        currentTransactionPage = page;
+        $('#mgc-fd-transactions-loading').show();
+        $('#mgc-fd-transactions-table-wrap').hide();
+        $('#mgc-fd-no-transactions').hide();
+
+        var search = $('#mgc-fd-transaction-search').val();
+        var filterUser = $('#mgc-fd-filter-user').val();
+
+        $.post(ajaxUrl, {
+            action: 'mgc_frontend_list_transactions',
+            nonce: nonce,
+            page: page,
+            search: search,
+            user_id: filterUser
+        }, function(response) {
+            $('#mgc-fd-transactions-loading').hide();
+
+            if (response.success && response.data.transactions.length > 0) {
+                var $tbody = $('#mgc-fd-transactions-tbody');
+                $tbody.empty();
+
+                // Populate user filter dropdown if not already done
+                if (response.data.users && response.data.users.length > 0) {
+                    var $userFilter = $('#mgc-fd-filter-user');
+                    if ($userFilter.find('option').length <= 1) {
+                        $.each(response.data.users, function(i, user) {
+                            $userFilter.append('<option value="' + user.id + '">' + escapeHtml(user.name) + ' (#' + user.id + ')</option>');
+                        });
+                    }
+                }
+
+                $.each(response.data.transactions, function(i, tx) {
+                    var txTypeClass = tx.type;
+                    var txTypeLabel = getTransactionTypeLabel(tx.type);
+                    var userIdDisplay = tx.updated_by ? '<span class="mgc-fd-user-id">#' + tx.updated_by + '</span>' : '-';
+                    var userNameDisplay = tx.updated_by_name || '-';
+                    var orderDisplay = tx.order_id > 0 ? '<a href="#" class="mgc-fd-order-link" data-order="' + tx.order_id + '">#' + tx.order_id + '</a>' : '<?php _e('Manual', 'massnahme-gift-cards'); ?>';
+
+                    $tbody.append(
+                        '<tr>' +
+                        '<td><strong>#' + tx.id + '</strong></td>' +
+                        '<td>' + tx.date + '</td>' +
+                        '<td><code>' + tx.gift_card_code + '</code></td>' +
+                        '<td><span class="mgc-fd-tx-type mgc-fd-tx-type-' + txTypeClass + '">' + txTypeLabel + '</span></td>' +
+                        '<td>' + formatCurrency(tx.amount_used) + '</td>' +
+                        '<td>' + formatCurrency(tx.remaining_balance) + '</td>' +
+                        '<td>' + userIdDisplay + '</td>' +
+                        '<td>' + escapeHtml(userNameDisplay) + '</td>' +
+                        '<td>' + orderDisplay + '</td>' +
+                        '</tr>'
+                    );
+                });
+
+                // Pagination
+                var $pagination = $('#mgc-fd-transactions-pagination');
+                $pagination.empty();
+                for (var i = 1; i <= response.data.total_pages; i++) {
+                    $pagination.append('<button class="mgc-fd-page-btn mgc-fd-tx-page-btn' + (i === page ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>');
+                }
+
+                $('#mgc-fd-transactions-table-wrap').show();
+            } else {
+                $('#mgc-fd-no-transactions').show();
+            }
+        });
+    }
+
+    function getTransactionTypeLabel(type) {
+        var labels = {
+            'redemption': '<?php _e('Redemption', 'massnahme-gift-cards'); ?>',
+            'creation': '<?php _e('Creation', 'massnahme-gift-cards'); ?>',
+            'adjustment': '<?php _e('Adjustment', 'massnahme-gift-cards'); ?>'
+        };
+        return labels[type] || type;
+    }
+
+    // Transaction search with debounce
+    $('#mgc-fd-transaction-search').on('input', function() {
+        clearTimeout(transactionSearchTimeout);
+        transactionSearchTimeout = setTimeout(function() {
+            loadTransactions(1);
+        }, 300);
+    });
+
+    // Transaction filter changes
+    $('#mgc-fd-filter-user').on('change', function() {
+        loadTransactions(1);
+    });
+
+    // Transaction pagination click
+    $(document).on('click', '.mgc-fd-tx-page-btn', function() {
+        loadTransactions($(this).data('page'));
+    });
+
+    // Refresh transactions button
+    $('#mgc-fd-refresh-transactions').on('click', function() {
+        loadTransactions(currentTransactionPage);
+    });
 
     // Pagination click
     $(document).on('click', '.mgc-fd-page-btn', function() {
@@ -1050,13 +1375,15 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                     $tbody.empty();
 
                     $.each(data.history, function(i, item) {
-                        var userInfo = item.updated_by_name || (item.updated_by ? 'User #' + item.updated_by : '-');
+                        var userIdDisplay = item.updated_by ? '<span class="mgc-fd-user-id">#' + item.updated_by + '</span>' : '-';
+                        var userNameDisplay = item.updated_by_name || '-';
                         $tbody.append(
                             '<tr>' +
                             '<td>' + item.date + '</td>' +
                             '<td>' + formatCurrency(item.amount) + '</td>' +
                             '<td>' + formatCurrency(item.remaining) + '</td>' +
-                            '<td>' + userInfo + '</td>' +
+                            '<td>' + userIdDisplay + '</td>' +
+                            '<td>' + escapeHtml(userNameDisplay) + '</td>' +
                             '</tr>'
                         );
                     });
