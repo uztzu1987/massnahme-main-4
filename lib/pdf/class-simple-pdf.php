@@ -309,8 +309,11 @@ class MGC_Simple_PDF {
         $catalog_id = $this->addObject("<< /Type /Catalog /Pages 2 0 R >>");
 
         // Pages object (will be object 2)
+        // Page objects come after: catalog(1) + pages(2) + fonts + content streams
+        // For each page, content stream is added first, then page object
+        // So page objects are at positions: (3 + font_count + 1), (3 + font_count + 3), etc.
         $page_refs = [];
-        $page_start_id = 3 + count($this->fonts);
+        $page_start_id = 4 + count($this->fonts);
         for ($i = 0; $i < count($this->pages); $i++) {
             $page_refs[] = ($page_start_id + $i * 2) . " 0 R";
         }
