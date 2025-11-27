@@ -1053,7 +1053,9 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     var transactionSearchTimeout = null;
 
     function formatCurrency(amount) {
-        return currencySymbol + parseFloat(amount).toFixed(2).replace('.', ',');
+        // Decode HTML entity (e.g., &euro; -> €) for proper display
+        var decodedSymbol = $('<textarea />').html(currencySymbol).text();
+        return decodedSymbol + parseFloat(amount).toFixed(2).replace('.', ',');
     }
 
     // Tab switching
