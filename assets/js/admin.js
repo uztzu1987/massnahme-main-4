@@ -139,8 +139,14 @@
             }).format(amount);
         }
 
-        // History Modal
+        // History Modal (only for validator page, not dashboard)
         var $historyModal = $('#mgc-history-modal');
+
+        // Open history modal - only if modal exists (validator page)
+        // Dashboard has its own handler in admin-dashboard.php
+        if ($historyModal.length === 0) {
+            return; // Exit early if modal doesn't exist
+        }
 
         // Open history modal
         $(document).on('click', '.mgc-view-history', function() {
