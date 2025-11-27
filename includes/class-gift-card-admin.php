@@ -160,6 +160,7 @@ class MGC_Admin {
         
         wp_localize_script('mgc-admin', 'mgc_admin', [
             'ajax_url' => admin_url('admin-ajax.php'),
+            'admin_url' => admin_url(),
             'nonce' => wp_create_nonce('mgc_admin_nonce'),
             'currency' => get_woocommerce_currency()
         ]);
@@ -241,7 +242,7 @@ class MGC_Admin {
             $coupon->save();
         }
 
-        // Log the manual balance change
+        // Log the manual balance change with user tracking
         $wpdb->insert(
             $wpdb->prefix . 'mgc_gift_card_usage',
             [
@@ -249,6 +250,7 @@ class MGC_Admin {
                 'order_id' => 0, // 0 indicates manual adjustment
                 'amount_used' => $old_balance - $new_balance,
                 'remaining_balance' => $new_balance,
+                'updated_by' => get_current_user_id(),
                 'used_at' => current_time('mysql')
             ]
         );
@@ -257,7 +259,7 @@ class MGC_Admin {
             'message' => __('Balance updated successfully', 'massnahme-gift-cards'),
             'new_balance' => $new_balance,
             'new_status' => $new_status,
-            'formatted_balance' => wc_price($new_balance)
+            'formatted_balance' => html_entity_decode(strip_tags(wc_price($new_balance)), ENT_QUOTES, 'UTF-8')
         ]);
     }
 
@@ -298,11 +300,18 @@ class MGC_Admin {
 
         $history_data = [];
         foreach ($history as $item) {
+            $user_name = '';
+            if (!empty($item->updated_by)) {
+                $user = get_user_by('id', $item->updated_by);
+                $user_name = $user ? $user->display_name : __('Unknown User', 'massnahme-gift-cards');
+            }
             $history_data[] = [
                 'date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->used_at)),
                 'amount' => floatval($item->amount_used),
                 'order_id' => intval($item->order_id),
-                'remaining' => floatval($item->remaining_balance)
+                'remaining' => floatval($item->remaining_balance),
+                'updated_by' => intval($item->updated_by ?? 0),
+                'updated_by_name' => $user_name
             ];
         }
 

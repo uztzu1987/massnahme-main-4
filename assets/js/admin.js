@@ -138,6 +138,104 @@
                 currency: mgc_admin.currency || 'EUR'
             }).format(amount);
         }
+
+        // History Modal
+        var $historyModal = $('#mgc-history-modal');
+
+        // Open history modal
+        $(document).on('click', '.mgc-view-history', function() {
+            var $btn = $(this);
+            var code = $btn.data('code');
+            var id = $btn.data('id');
+
+            // Reset modal
+            $('#mgc-history-id').text('#' + id);
+            $('#mgc-history-code').text(code);
+            $('#mgc-history-loading').show();
+            $('#mgc-history-table').hide();
+            $('#mgc-history-empty').hide();
+            $('#mgc-history-tbody').empty();
+
+            // Show modal
+            $historyModal.show();
+
+            // Fetch history via AJAX
+            $.post(mgc_admin.ajax_url, {
+                action: 'mgc_staff_lookup',
+                code: code,
+                nonce: mgc_admin.nonce
+            }, function(response) {
+                $('#mgc-history-loading').hide();
+
+                if (response.success) {
+                    var data = response.data;
+
+                    // Populate card info
+                    $('#mgc-history-amount').text(formatCurrency(data.amount));
+                    $('#mgc-history-balance').text(formatCurrency(data.balance));
+                    $('#mgc-history-status').text(data.status.charAt(0).toUpperCase() + data.status.slice(1));
+
+                    // Populate history table
+                    if (data.history && data.history.length > 0) {
+                        var $tbody = $('#mgc-history-tbody');
+                        $.each(data.history, function(i, item) {
+                            var orderCell = item.order_id === 0
+                                ? '<span class="mgc-history-manual">Manual</span>'
+                                : '<a href="' + mgc_admin.admin_url + 'post.php?post=' + item.order_id + '&action=edit" class="mgc-history-order-link" target="_blank">#' + item.order_id + '</a>';
+
+                            var userCell = '';
+                            if (item.updated_by_name) {
+                                userCell = '<span class="mgc-history-user">' + item.updated_by_name + '</span>';
+                                if (item.updated_by) {
+                                    userCell += '<br><span class="mgc-history-user-id">(ID: ' + item.updated_by + ')</span>';
+                                }
+                            } else if (item.updated_by) {
+                                userCell = '<span class="mgc-history-user-id">User ID: ' + item.updated_by + '</span>';
+                            } else {
+                                userCell = '<span class="mgc-history-user-id">—</span>';
+                            }
+
+                            $tbody.append(
+                                '<tr>' +
+                                '<td>' + item.date + '</td>' +
+                                '<td>' + formatCurrency(item.amount) + '</td>' +
+                                '<td>' + formatCurrency(item.remaining) + '</td>' +
+                                '<td>' + orderCell + '</td>' +
+                                '<td>' + userCell + '</td>' +
+                                '</tr>'
+                            );
+                        });
+                        $('#mgc-history-table').show();
+                    } else {
+                        $('#mgc-history-empty').show();
+                    }
+                } else {
+                    $('#mgc-history-empty').text(response.data || 'Failed to load history').show();
+                }
+            }).fail(function() {
+                $('#mgc-history-loading').hide();
+                $('#mgc-history-empty').text('Failed to load history. Please try again.').show();
+            });
+        });
+
+        // Close history modal
+        $(document).on('click', '#mgc-history-modal .mgc-modal-close, #mgc-history-modal .mgc-modal-close-btn', function() {
+            $historyModal.hide();
+        });
+
+        // Close history modal on background click
+        $historyModal.on('click', function(e) {
+            if ($(e.target).is('.mgc-modal')) {
+                $historyModal.hide();
+            }
+        });
+
+        // Close history modal on Escape key
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape' && $historyModal.is(':visible')) {
+                $historyModal.hide();
+            }
+        });
     });
 
 })(jQuery);

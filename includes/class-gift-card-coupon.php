@@ -212,7 +212,7 @@ class MGC_Coupon {
             $coupon->update_meta_data('_mgc_balance', $new_balance);
             $coupon->save();
 
-            // Log usage in database
+            // Log usage in database with user tracking
             $wpdb->insert(
                 $wpdb->prefix . 'mgc_gift_card_usage',
                 [
@@ -220,6 +220,7 @@ class MGC_Coupon {
                     'order_id' => $order_id,
                     'amount_used' => $actual_deduction,
                     'remaining_balance' => $new_balance,
+                    'updated_by' => get_current_user_id(),
                     'used_at' => current_time('mysql')
                 ]
             );

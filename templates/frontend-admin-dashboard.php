@@ -1,0 +1,1090 @@
+<?php
+/**
+ * Frontend Admin Dashboard Template
+ * Shortcode: [massnahme_admin_dashboard]
+ * Allows shop admins to view, create, and manage gift cards
+ */
+
+defined('ABSPATH') || exit;
+
+$currency_symbol = get_woocommerce_currency_symbol();
+
+// Get statistics
+global $wpdb;
+$table = $wpdb->prefix . 'mgc_gift_cards';
+$total_cards = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+$active_cards = $wpdb->get_var("SELECT COUNT(*) FROM $table WHERE status = 'active'");
+$total_value = $wpdb->get_var("SELECT SUM(amount) FROM $table") ?: 0;
+$remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status = 'active'") ?: 0;
+?>
+
+<div class="mgc-frontend-dashboard">
+    <!-- Header -->
+    <div class="mgc-fd-header">
+        <h2><?php _e('Gift Card Management', 'massnahme-gift-cards'); ?></h2>
+        <span class="mgc-fd-user"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="mgc-fd-tabs">
+        <button class="mgc-fd-tab active" data-tab="overview"><?php _e('Overview', 'massnahme-gift-cards'); ?></button>
+        <button class="mgc-fd-tab" data-tab="all-cards"><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></button>
+        <button class="mgc-fd-tab" data-tab="create"><?php _e('Create Gift Card', 'massnahme-gift-cards'); ?></button>
+    </div>
+
+    <!-- Overview Tab -->
+    <div class="mgc-fd-content mgc-fd-tab-content active" id="mgc-tab-overview">
+        <div class="mgc-fd-stats">
+            <div class="mgc-fd-stat-card">
+                <span class="mgc-fd-stat-value"><?php echo number_format($total_cards); ?></span>
+                <span class="mgc-fd-stat-label"><?php _e('Total Cards', 'massnahme-gift-cards'); ?></span>
+            </div>
+            <div class="mgc-fd-stat-card">
+                <span class="mgc-fd-stat-value"><?php echo number_format($active_cards); ?></span>
+                <span class="mgc-fd-stat-label"><?php _e('Active Cards', 'massnahme-gift-cards'); ?></span>
+            </div>
+            <div class="mgc-fd-stat-card">
+                <span class="mgc-fd-stat-value"><?php echo esc_html(html_entity_decode(strip_tags(wc_price($total_value)), ENT_QUOTES, 'UTF-8')); ?></span>
+                <span class="mgc-fd-stat-label"><?php _e('Total Value', 'massnahme-gift-cards'); ?></span>
+            </div>
+            <div class="mgc-fd-stat-card">
+                <span class="mgc-fd-stat-value"><?php echo esc_html(html_entity_decode(strip_tags(wc_price($remaining_value)), ENT_QUOTES, 'UTF-8')); ?></span>
+                <span class="mgc-fd-stat-label"><?php _e('Outstanding', 'massnahme-gift-cards'); ?></span>
+            </div>
+        </div>
+
+        <div class="mgc-fd-quick-actions">
+            <h3><?php _e('Quick Actions', 'massnahme-gift-cards'); ?></h3>
+            <button class="mgc-fd-btn mgc-fd-btn-primary" data-goto="create">
+                <?php _e('Create New Gift Card', 'massnahme-gift-cards'); ?>
+            </button>
+            <button class="mgc-fd-btn mgc-fd-btn-secondary" data-goto="all-cards">
+                <?php _e('View All Cards', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+    </div>
+
+    <!-- All Cards Tab -->
+    <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-all-cards">
+        <div class="mgc-fd-cards-header">
+            <h3><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></h3>
+            <button class="mgc-fd-btn mgc-fd-btn-primary mgc-fd-btn-sm" id="mgc-fd-refresh">
+                <?php _e('Refresh', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+
+        <div id="mgc-fd-cards-loading" class="mgc-fd-loading">
+            <?php _e('Loading gift cards...', 'massnahme-gift-cards'); ?>
+        </div>
+
+        <div id="mgc-fd-cards-table-wrap" style="display: none;">
+            <table class="mgc-fd-table" id="mgc-fd-cards-table">
+                <thead>
+                    <tr>
+                        <th><?php _e('ID', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Code', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Balance', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Status', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Created', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Actions', 'massnahme-gift-cards'); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="mgc-fd-cards-tbody"></tbody>
+            </table>
+
+            <div id="mgc-fd-pagination" class="mgc-fd-pagination"></div>
+        </div>
+
+        <p id="mgc-fd-no-cards" style="display: none;"><?php _e('No gift cards found.', 'massnahme-gift-cards'); ?></p>
+    </div>
+
+    <!-- Create Card Tab -->
+    <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-create">
+        <div class="mgc-fd-create-form">
+            <h3><?php _e('Create New Gift Card', 'massnahme-gift-cards'); ?></h3>
+
+            <div class="mgc-fd-form-notice" id="mgc-fd-create-notice" style="display: none;"></div>
+
+            <form id="mgc-fd-create-form">
+                <!-- Card Type Toggle -->
+                <div class="mgc-fd-card-type-toggle">
+                    <label class="mgc-fd-toggle-option">
+                        <input type="radio" name="card_type" value="digital" checked>
+                        <span class="mgc-fd-toggle-label">
+                            <span class="mgc-fd-toggle-icon">&#128231;</span>
+                            <?php _e('Digital Card', 'massnahme-gift-cards'); ?>
+                        </span>
+                    </label>
+                    <label class="mgc-fd-toggle-option">
+                        <input type="radio" name="card_type" value="physical">
+                        <span class="mgc-fd-toggle-label">
+                            <span class="mgc-fd-toggle-icon">&#127873;</span>
+                            <?php _e('Physical Card', 'massnahme-gift-cards'); ?>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Amount -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-amount"><?php _e('Amount', 'massnahme-gift-cards'); ?> *</label>
+                    <div class="mgc-fd-amount-input">
+                        <span class="mgc-fd-currency"><?php echo esc_html($currency_symbol); ?></span>
+                        <input type="number" id="mgc-create-amount" name="amount" step="0.01" min="1" required>
+                    </div>
+                    <div class="mgc-fd-quick-amounts">
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="50"><?php echo esc_html($currency_symbol); ?>50</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="100"><?php echo esc_html($currency_symbol); ?>100</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="200"><?php echo esc_html($currency_symbol); ?>200</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="500"><?php echo esc_html($currency_symbol); ?>500</button>
+                    </div>
+                </div>
+
+                <!-- Custom Code (shown for physical cards) -->
+                <div class="mgc-fd-form-group mgc-fd-physical-only" style="display: none;">
+                    <label for="mgc-create-code">
+                        <?php _e('Card Code', 'massnahme-gift-cards'); ?>
+                        <span class="mgc-fd-label-hint"><?php _e('(printed on physical card)', 'massnahme-gift-cards'); ?></span>
+                    </label>
+                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('e.g., PHYS-2025-ABC123', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
+                    <p class="mgc-fd-field-hint"><?php _e('Enter the code printed on the physical card. Use letters, numbers, and dashes only.', 'massnahme-gift-cards'); ?></p>
+                </div>
+
+                <!-- Auto-generate notice (shown for digital cards) -->
+                <div class="mgc-fd-form-group mgc-fd-digital-only">
+                    <div class="mgc-fd-info-box">
+                        <span class="mgc-fd-info-icon">&#9432;</span>
+                        <?php _e('A unique code will be automatically generated for this digital gift card.', 'massnahme-gift-cards'); ?>
+                    </div>
+                </div>
+
+                <!-- Recipient Name -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-recipient-name"><?php _e('Recipient Name', 'massnahme-gift-cards'); ?></label>
+                    <input type="text" id="mgc-create-recipient-name" name="recipient_name" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
+                </div>
+
+                <!-- Recipient Email -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-recipient-email"><?php _e('Recipient Email', 'massnahme-gift-cards'); ?></label>
+                    <input type="email" id="mgc-create-recipient-email" name="recipient_email" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
+                </div>
+
+                <!-- Message -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-message"><?php _e('Personal Message', 'massnahme-gift-cards'); ?></label>
+                    <textarea id="mgc-create-message" name="message" rows="3" placeholder="<?php esc_attr_e('Optional personal message', 'massnahme-gift-cards'); ?>"></textarea>
+                </div>
+
+                <button type="submit" class="mgc-fd-btn mgc-fd-btn-primary mgc-fd-btn-large" id="mgc-fd-create-btn">
+                    <?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Card Detail Modal -->
+    <div id="mgc-fd-detail-modal" class="mgc-fd-modal" style="display: none;">
+        <div class="mgc-fd-modal-content">
+            <div class="mgc-fd-modal-header">
+                <h3><?php _e('Gift Card Details', 'massnahme-gift-cards'); ?></h3>
+                <button type="button" class="mgc-fd-modal-close">&times;</button>
+            </div>
+            <div class="mgc-fd-modal-body">
+                <div class="mgc-fd-detail-grid">
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('ID', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-id"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Code', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value mgc-fd-code" id="mgc-detail-code"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Original Amount', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-amount"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Current Balance', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value mgc-fd-balance" id="mgc-detail-balance"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Recipient', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-recipient"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Status', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-status"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Created', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-created"></span>
+                    </div>
+                    <div class="mgc-fd-detail-item">
+                        <span class="mgc-fd-detail-label"><?php _e('Expires', 'massnahme-gift-cards'); ?></span>
+                        <span class="mgc-fd-detail-value" id="mgc-detail-expires"></span>
+                    </div>
+                </div>
+
+                <h4><?php _e('Transaction History', 'massnahme-gift-cards'); ?></h4>
+                <div id="mgc-detail-history-loading"><?php _e('Loading...', 'massnahme-gift-cards'); ?></div>
+                <table class="mgc-fd-table mgc-fd-history-table" id="mgc-detail-history-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Updated By', 'massnahme-gift-cards'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mgc-detail-history-tbody"></tbody>
+                </table>
+                <p id="mgc-detail-no-history" style="display: none;"><?php _e('No transactions yet.', 'massnahme-gift-cards'); ?></p>
+            </div>
+            <div class="mgc-fd-modal-footer">
+                <button type="button" class="mgc-fd-btn mgc-fd-btn-secondary mgc-fd-modal-close-btn"><?php _e('Close', 'massnahme-gift-cards'); ?></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="mgc-fd-success-modal" class="mgc-fd-modal" style="display: none;">
+        <div class="mgc-fd-modal-content mgc-fd-success-content">
+            <div class="mgc-fd-success-icon">&#10003;</div>
+            <h3><?php _e('Gift Card Created!', 'massnahme-gift-cards'); ?></h3>
+            <div class="mgc-fd-success-details">
+                <p class="mgc-fd-success-code" id="mgc-success-code"></p>
+                <p class="mgc-fd-success-amount" id="mgc-success-amount"></p>
+            </div>
+            <button type="button" class="mgc-fd-btn mgc-fd-btn-primary" id="mgc-fd-success-close"><?php _e('Done', 'massnahme-gift-cards'); ?></button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Frontend Dashboard Container */
+.mgc-frontend-dashboard {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Header */
+.mgc-fd-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #eee;
+}
+
+.mgc-fd-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #1a1a1a;
+}
+
+.mgc-fd-user {
+    font-size: 14px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 6px 14px;
+    border-radius: 20px;
+}
+
+/* Tabs */
+.mgc-fd-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0;
+}
+
+.mgc-fd-tab {
+    padding: 12px 24px;
+    border: none;
+    background: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.mgc-fd-tab:hover {
+    color: #1a1a1a;
+}
+
+.mgc-fd-tab.active {
+    color: #2271b1;
+    border-bottom-color: #2271b1;
+}
+
+/* Tab Content */
+.mgc-fd-tab-content {
+    display: none;
+}
+
+.mgc-fd-tab-content.active {
+    display: block;
+}
+
+/* Statistics */
+.mgc-fd-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.mgc-fd-stat-card {
+    background: linear-gradient(135deg, #1e3a5f, #2271b1);
+    color: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.mgc-fd-stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.mgc-fd-stat-label {
+    font-size: 13px;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Quick Actions */
+.mgc-fd-quick-actions {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 12px;
+}
+
+.mgc-fd-quick-actions h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+}
+
+/* Buttons */
+.mgc-fd-btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 10px;
+}
+
+.mgc-fd-btn-primary {
+    background: #2271b1;
+    color: #fff;
+}
+
+.mgc-fd-btn-primary:hover {
+    background: #135e96;
+}
+
+.mgc-fd-btn-secondary {
+    background: #6c757d;
+    color: #fff;
+}
+
+.mgc-fd-btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.mgc-fd-btn-large {
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+.mgc-fd-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Table */
+.mgc-fd-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.mgc-fd-table th,
+.mgc-fd-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.mgc-fd-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #666;
+}
+
+.mgc-fd-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Status Badges */
+.mgc-fd-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mgc-fd-status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.mgc-fd-status-used {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.mgc-fd-type {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.mgc-fd-type-digital {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.mgc-fd-type-physical {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+/* Form */
+.mgc-fd-create-form {
+    max-width: 600px;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.mgc-fd-create-form h3 {
+    margin: 0 0 25px 0;
+    font-size: 20px;
+}
+
+.mgc-fd-form-group {
+    margin-bottom: 20px;
+}
+
+.mgc-fd-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mgc-fd-label-hint {
+    font-weight: 400;
+    color: #888;
+    font-size: 13px;
+}
+
+.mgc-fd-form-group input[type="text"],
+.mgc-fd-form-group input[type="email"],
+.mgc-fd-form-group input[type="number"],
+.mgc-fd-form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.mgc-fd-form-group input:focus,
+.mgc-fd-form-group textarea:focus {
+    border-color: #2271b1;
+    outline: none;
+}
+
+.mgc-fd-amount-input {
+    display: flex;
+    align-items: center;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.mgc-fd-currency {
+    padding: 12px 15px;
+    background: #f8f9fa;
+    font-size: 18px;
+    font-weight: 600;
+    color: #666;
+}
+
+.mgc-fd-amount-input input {
+    flex: 1;
+    border: none !important;
+    font-size: 20px;
+    text-align: center;
+}
+
+.mgc-fd-quick-amounts {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.mgc-fd-quick-amount {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    background: #fff;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mgc-fd-quick-amount:hover {
+    border-color: #2271b1;
+    color: #2271b1;
+}
+
+.mgc-fd-field-hint {
+    margin: 8px 0 0 0;
+    font-size: 13px;
+    color: #888;
+}
+
+/* Card Type Toggle */
+.mgc-fd-card-type-toggle {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.mgc-fd-toggle-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.mgc-fd-toggle-option input {
+    display: none;
+}
+
+.mgc-fd-toggle-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    transition: all 0.2s;
+}
+
+.mgc-fd-toggle-option input:checked + .mgc-fd-toggle-label {
+    border-color: #2271b1;
+    background: #f0f7fc;
+}
+
+.mgc-fd-toggle-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+/* Info Box */
+.mgc-fd-info-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    background: #e8f4fc;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1565c0;
+}
+
+.mgc-fd-info-icon {
+    font-size: 18px;
+}
+
+/* Form Notice */
+.mgc-fd-form-notice {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.mgc-fd-form-notice.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.mgc-fd-form-notice.error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Modal */
+.mgc-fd-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.mgc-fd-modal-content {
+    background: #fff;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.mgc-fd-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.mgc-fd-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.mgc-fd-modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+}
+
+.mgc-fd-modal-body {
+    padding: 20px;
+}
+
+.mgc-fd-modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #eee;
+    text-align: right;
+}
+
+/* Detail Grid */
+.mgc-fd-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.mgc-fd-detail-item {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 8px;
+}
+
+.mgc-fd-detail-label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.mgc-fd-detail-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mgc-fd-detail-value.mgc-fd-code {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+.mgc-fd-detail-value.mgc-fd-balance {
+    color: #2271b1;
+    font-size: 18px;
+}
+
+/* Success Modal */
+.mgc-fd-success-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.mgc-fd-success-icon {
+    width: 70px;
+    height: 70px;
+    background: #28a745;
+    color: #fff;
+    font-size: 36px;
+    line-height: 70px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+}
+
+.mgc-fd-success-code {
+    font-size: 24px;
+    font-weight: 700;
+    font-family: monospace;
+    letter-spacing: 2px;
+    color: #333;
+    margin: 15px 0;
+}
+
+.mgc-fd-success-amount {
+    font-size: 20px;
+    color: #2271b1;
+    font-weight: 600;
+}
+
+/* Loading */
+.mgc-fd-loading {
+    text-align: center;
+    padding: 40px;
+    color: #888;
+}
+
+/* Pagination */
+.mgc-fd-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+}
+
+.mgc-fd-page-btn {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.mgc-fd-page-btn:hover {
+    background: #f8f9fa;
+}
+
+.mgc-fd-page-btn.active {
+    background: #2271b1;
+    color: #fff;
+    border-color: #2271b1;
+}
+
+/* Cards Header */
+.mgc-fd-cards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.mgc-fd-cards-header h3 {
+    margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mgc-fd-tabs {
+        flex-wrap: wrap;
+    }
+
+    .mgc-fd-tab {
+        flex: 1;
+        text-align: center;
+        padding: 10px 15px;
+    }
+
+    .mgc-fd-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .mgc-fd-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mgc-fd-table {
+        font-size: 13px;
+    }
+
+    .mgc-fd-table th,
+    .mgc-fd-table td {
+        padding: 8px 10px;
+    }
+}
+</style>
+
+<script>
+(function($) {
+    'use strict';
+
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+    var nonce = '<?php echo wp_create_nonce('mgc_frontend_nonce'); ?>';
+    var currencySymbol = '<?php echo esc_js($currency_symbol); ?>';
+    var currentPage = 1;
+
+    function formatCurrency(amount) {
+        return currencySymbol + parseFloat(amount).toFixed(2).replace('.', ',');
+    }
+
+    // Tab switching
+    $('.mgc-fd-tab').on('click', function() {
+        var tab = $(this).data('tab');
+        $('.mgc-fd-tab').removeClass('active');
+        $(this).addClass('active');
+        $('.mgc-fd-tab-content').removeClass('active');
+        $('#mgc-tab-' + tab).addClass('active');
+
+        if (tab === 'all-cards') {
+            loadCards(1);
+        }
+    });
+
+    // Quick action buttons
+    $('[data-goto]').on('click', function() {
+        var tab = $(this).data('goto');
+        $('.mgc-fd-tab[data-tab="' + tab + '"]').click();
+    });
+
+    // Card type toggle
+    $('input[name="card_type"]').on('change', function() {
+        if ($(this).val() === 'physical') {
+            $('.mgc-fd-physical-only').show();
+            $('.mgc-fd-digital-only').hide();
+        } else {
+            $('.mgc-fd-physical-only').hide();
+            $('.mgc-fd-digital-only').show();
+        }
+    });
+
+    // Quick amount buttons
+    $('.mgc-fd-quick-amount').on('click', function() {
+        $('#mgc-create-amount').val($(this).data('amount'));
+    });
+
+    // Create form submission
+    $('#mgc-fd-create-form').on('submit', function(e) {
+        e.preventDefault();
+
+        var $btn = $('#mgc-fd-create-btn');
+        var $notice = $('#mgc-fd-create-notice');
+        var isPhysical = $('input[name="card_type"]:checked').val() === 'physical';
+
+        $btn.prop('disabled', true).text('<?php _e('Creating...', 'massnahme-gift-cards'); ?>');
+        $notice.hide();
+
+        $.post(ajaxUrl, {
+            action: 'mgc_frontend_create_card',
+            nonce: nonce,
+            amount: $('#mgc-create-amount').val(),
+            custom_code: isPhysical ? $('#mgc-create-code').val() : '',
+            recipient_name: $('#mgc-create-recipient-name').val(),
+            recipient_email: $('#mgc-create-recipient-email').val(),
+            message: $('#mgc-create-message').val(),
+            is_physical: isPhysical ? 1 : 0
+        }, function(response) {
+            if (response.success) {
+                // Show success modal
+                $('#mgc-success-code').text(response.data.code);
+                $('#mgc-success-amount').text(response.data.formatted_amount);
+                $('#mgc-fd-success-modal').show();
+
+                // Reset form
+                $('#mgc-fd-create-form')[0].reset();
+                $('input[name="card_type"][value="digital"]').prop('checked', true).trigger('change');
+            } else {
+                $notice.removeClass('success').addClass('error').text(response.data).show();
+            }
+        }).fail(function() {
+            $notice.removeClass('success').addClass('error').text('<?php _e('An error occurred. Please try again.', 'massnahme-gift-cards'); ?>').show();
+        }).always(function() {
+            $btn.prop('disabled', false).text('<?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>');
+        });
+    });
+
+    // Success modal close
+    $('#mgc-fd-success-close').on('click', function() {
+        $('#mgc-fd-success-modal').hide();
+    });
+
+    // Load cards
+    function loadCards(page) {
+        currentPage = page;
+        $('#mgc-fd-cards-loading').show();
+        $('#mgc-fd-cards-table-wrap').hide();
+        $('#mgc-fd-no-cards').hide();
+
+        $.post(ajaxUrl, {
+            action: 'mgc_frontend_list_cards',
+            nonce: nonce,
+            page: page
+        }, function(response) {
+            $('#mgc-fd-cards-loading').hide();
+
+            if (response.success && response.data.cards.length > 0) {
+                var $tbody = $('#mgc-fd-cards-tbody');
+                $tbody.empty();
+
+                $.each(response.data.cards, function(i, card) {
+                    var typeClass = card.delivery_method === 'physical' ? 'physical' : 'digital';
+                    var typeLabel = card.delivery_method === 'physical' ? '<?php _e('Physical', 'massnahme-gift-cards'); ?>' : '<?php _e('Digital', 'massnahme-gift-cards'); ?>';
+                    var statusClass = card.status;
+
+                    $tbody.append(
+                        '<tr>' +
+                        '<td><strong>#' + card.id + '</strong></td>' +
+                        '<td><code>' + card.code + '</code></td>' +
+                        '<td>' + card.formatted_amount + '</td>' +
+                        '<td>' + card.formatted_balance + '</td>' +
+                        '<td><span class="mgc-fd-type mgc-fd-type-' + typeClass + '">' + typeLabel + '</span></td>' +
+                        '<td><span class="mgc-fd-status mgc-fd-status-' + statusClass + '">' + card.status.charAt(0).toUpperCase() + card.status.slice(1) + '</span></td>' +
+                        '<td>' + card.created_at + '</td>' +
+                        '<td><button class="mgc-fd-btn mgc-fd-btn-sm mgc-fd-btn-secondary mgc-fd-view-detail" data-code="' + card.code + '"><?php _e('Details', 'massnahme-gift-cards'); ?></button></td>' +
+                        '</tr>'
+                    );
+                });
+
+                // Pagination
+                var $pagination = $('#mgc-fd-pagination');
+                $pagination.empty();
+                for (var i = 1; i <= response.data.total_pages; i++) {
+                    $pagination.append('<button class="mgc-fd-page-btn' + (i === page ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>');
+                }
+
+                $('#mgc-fd-cards-table-wrap').show();
+            } else {
+                $('#mgc-fd-no-cards').show();
+            }
+        });
+    }
+
+    // Pagination click
+    $(document).on('click', '.mgc-fd-page-btn', function() {
+        loadCards($(this).data('page'));
+    });
+
+    // Refresh button
+    $('#mgc-fd-refresh').on('click', function() {
+        loadCards(currentPage);
+    });
+
+    // View detail
+    $(document).on('click', '.mgc-fd-view-detail', function() {
+        var code = $(this).data('code');
+        showCardDetail(code);
+    });
+
+    function showCardDetail(code) {
+        $('#mgc-detail-history-loading').show();
+        $('#mgc-detail-history-table').hide();
+        $('#mgc-detail-no-history').hide();
+        $('#mgc-fd-detail-modal').show();
+
+        $.post(ajaxUrl, {
+            action: 'mgc_frontend_staff_lookup',
+            nonce: nonce,
+            code: code
+        }, function(response) {
+            $('#mgc-detail-history-loading').hide();
+
+            if (response.success) {
+                var data = response.data;
+
+                $('#mgc-detail-id').text('#' + (data.id || '-'));
+                $('#mgc-detail-code').text(data.code);
+                $('#mgc-detail-amount').text(formatCurrency(data.amount));
+                $('#mgc-detail-balance').text(formatCurrency(data.balance));
+                $('#mgc-detail-recipient').text(data.recipient_name || data.recipient_email || '-');
+                $('#mgc-detail-status').text(data.status.charAt(0).toUpperCase() + data.status.slice(1));
+                $('#mgc-detail-created').text(data.created_at);
+                $('#mgc-detail-expires').text(data.expires_at);
+
+                if (data.history && data.history.length > 0) {
+                    var $tbody = $('#mgc-detail-history-tbody');
+                    $tbody.empty();
+
+                    $.each(data.history, function(i, item) {
+                        var userInfo = item.updated_by_name || (item.updated_by ? 'User #' + item.updated_by : '-');
+                        $tbody.append(
+                            '<tr>' +
+                            '<td>' + item.date + '</td>' +
+                            '<td>' + formatCurrency(item.amount) + '</td>' +
+                            '<td>' + formatCurrency(item.remaining) + '</td>' +
+                            '<td>' + userInfo + '</td>' +
+                            '</tr>'
+                        );
+                    });
+
+                    $('#mgc-detail-history-table').show();
+                } else {
+                    $('#mgc-detail-no-history').show();
+                }
+            }
+        });
+    }
+
+    // Close modals
+    $(document).on('click', '.mgc-fd-modal-close, .mgc-fd-modal-close-btn', function() {
+        $(this).closest('.mgc-fd-modal').hide();
+    });
+
+    $('.mgc-fd-modal').on('click', function(e) {
+        if ($(e.target).is('.mgc-fd-modal')) {
+            $(this).hide();
+        }
+    });
+
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape') {
+            $('.mgc-fd-modal').hide();
+        }
+    });
+
+})(jQuery);
+</script>
