@@ -282,18 +282,21 @@ class MGC_Core {
     }
     
     private function generate_unique_code() {
-        $settings = get_option('mgc_settings');
-        $prefix = $settings['code_prefix'] ?: 'MASS';
-        
         do {
+            // Generate a 16-digit numeric code formatted as XXXX-XXXX-XXXX-XXXX
+            $numbers = '';
+            for ($i = 0; $i < 16; $i++) {
+                $numbers .= mt_rand(0, 9);
+            }
             $code = sprintf(
-                '%s-%d-%s',
-                $prefix,
-                date('Y'),
-                strtoupper(wp_generate_password(6, false))
+                '%s-%s-%s-%s',
+                substr($numbers, 0, 4),
+                substr($numbers, 4, 4),
+                substr($numbers, 8, 4),
+                substr($numbers, 12, 4)
             );
         } while ($this->code_exists($code));
-        
+
         return $code;
     }
     
