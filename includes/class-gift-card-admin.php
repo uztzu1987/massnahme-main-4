@@ -28,6 +28,8 @@ class MGC_Admin {
         add_action('wp_ajax_mgc_update_balance', [$this, 'ajax_update_balance']);
         add_action('wp_ajax_mgc_staff_lookup', [$this, 'ajax_staff_lookup']);
         add_action('wp_ajax_mgc_update_pickup_status', [$this, 'ajax_update_pickup_status']);
+        add_action('wp_ajax_mgc_admin_list_cards', [$this, 'ajax_admin_list_cards']);
+        add_action('wp_ajax_mgc_admin_list_transactions', [$this, 'ajax_admin_list_transactions']);
     }
     
     public function add_menu_pages() {
@@ -316,6 +318,7 @@ class MGC_Admin {
         }
 
         wp_send_json_success([
+            'id' => intval($gift_card->id),
             'code' => $gift_card->code,
             'amount' => floatval($gift_card->amount),
             'balance' => floatval($gift_card->balance),
@@ -430,5 +433,201 @@ class MGC_Admin {
         ];
 
         wp_mail($to, $subject, $message, $headers);
+    }
+
+    /**
+     * AJAX handler for listing all gift cards with filtering and pagination
+     */
+    public function ajax_admin_list_cards() {
+        check_ajax_referer('mgc_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(__('Permission denied', 'massnahme-gift-cards'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'mgc_gift_cards';
+
+        $page = max(1, intval($_POST['page'] ?? 1));
+        $per_page = 20;
+        $offset = ($page - 1) * $per_page;
+
+        // Build WHERE clause for filters
+        $where = ['1=1'];
+        $where_args = [];
+
+        // Search filter
+        $search = sanitize_text_field($_POST['search'] ?? '');
+        if (!empty($search)) {
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = "(code LIKE %s OR recipient_name LIKE %s OR recipient_email LIKE %s)";
+            $where_args[] = $search_like;
+            $where_args[] = $search_like;
+            $where_args[] = $search_like;
+        }
+
+        // Status filter
+        $status = sanitize_text_field($_POST['status'] ?? '');
+        if (!empty($status) && in_array($status, ['active', 'used'])) {
+            $where[] = "status = %s";
+            $where_args[] = $status;
+        }
+
+        // Delivery method filter
+        $delivery_method = sanitize_text_field($_POST['delivery_method'] ?? '');
+        if (!empty($delivery_method) && in_array($delivery_method, ['digital', 'physical', 'pickup', 'shipping'])) {
+            $where[] = "delivery_method = %s";
+            $where_args[] = $delivery_method;
+        }
+
+        $where_clause = implode(' AND ', $where);
+
+        // Get total count with filters
+        $count_query = "SELECT COUNT(*) FROM $table WHERE $where_clause";
+        if (!empty($where_args)) {
+            $total = $wpdb->get_var($wpdb->prepare($count_query, $where_args));
+        } else {
+            $total = $wpdb->get_var($count_query);
+        }
+
+        // Get cards with filters
+        $query = "SELECT * FROM $table WHERE $where_clause ORDER BY created_at DESC LIMIT %d OFFSET %d";
+        $query_args = array_merge($where_args, [$per_page, $offset]);
+        $cards = $wpdb->get_results($wpdb->prepare($query, $query_args));
+
+        $cards_data = [];
+        foreach ($cards as $card) {
+            $cards_data[] = [
+                'id' => intval($card->id),
+                'code' => $card->code,
+                'amount' => floatval($card->amount),
+                'balance' => floatval($card->balance),
+                'formatted_amount' => html_entity_decode(strip_tags(wc_price($card->amount)), ENT_QUOTES, 'UTF-8'),
+                'formatted_balance' => html_entity_decode(strip_tags(wc_price($card->balance)), ENT_QUOTES, 'UTF-8'),
+                'recipient_name' => $card->recipient_name ?? '',
+                'recipient_email' => $card->recipient_email ?? '',
+                'delivery_method' => $card->delivery_method ?? 'digital',
+                'status' => $card->status,
+                'created_at' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($card->created_at)),
+                'expires_at' => date_i18n(get_option('date_format'), strtotime($card->expires_at)),
+                'order_id' => intval($card->order_id)
+            ];
+        }
+
+        wp_send_json_success([
+            'cards' => $cards_data,
+            'total' => intval($total),
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => ceil($total / $per_page)
+        ]);
+    }
+
+    /**
+     * AJAX handler for listing all transactions with filtering and pagination
+     */
+    public function ajax_admin_list_transactions() {
+        check_ajax_referer('mgc_admin_nonce', 'nonce');
+
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(__('Permission denied', 'massnahme-gift-cards'));
+        }
+
+        global $wpdb;
+        $usage_table = $wpdb->prefix . 'mgc_gift_card_usage';
+
+        $page = max(1, intval($_POST['page'] ?? 1));
+        $per_page = 25;
+        $offset = ($page - 1) * $per_page;
+
+        // Build WHERE clause for filters
+        $where = ['1=1'];
+        $where_args = [];
+
+        // Search by gift card code
+        $search = sanitize_text_field($_POST['search'] ?? '');
+        if (!empty($search)) {
+            $search_like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = "gift_card_code LIKE %s";
+            $where_args[] = $search_like;
+        }
+
+        // Filter by user
+        $user_id = intval($_POST['user_id'] ?? 0);
+        if ($user_id > 0) {
+            $where[] = "updated_by = %d";
+            $where_args[] = $user_id;
+        }
+
+        // Filter by transaction type
+        $tx_type = sanitize_text_field($_POST['tx_type'] ?? '');
+        if (!empty($tx_type)) {
+            switch ($tx_type) {
+                case 'creation':
+                    $where[] = "amount_used = 0";
+                    break;
+                case 'redemption':
+                    $where[] = "amount_used > 0";
+                    break;
+                case 'adjustment':
+                    $where[] = "amount_used < 0";
+                    break;
+            }
+        }
+
+        $where_clause = implode(' AND ', $where);
+
+        // Get total count with filters
+        $count_query = "SELECT COUNT(*) FROM $usage_table WHERE $where_clause";
+        if (!empty($where_args)) {
+            $total = $wpdb->get_var($wpdb->prepare($count_query, $where_args));
+        } else {
+            $total = $wpdb->get_var($count_query);
+        }
+
+        // Get transactions with filters
+        $query = "SELECT * FROM $usage_table WHERE $where_clause ORDER BY used_at DESC LIMIT %d OFFSET %d";
+        $query_args = array_merge($where_args, [$per_page, $offset]);
+        $transactions = $wpdb->get_results($wpdb->prepare($query, $query_args));
+
+        $transactions_data = [];
+        foreach ($transactions as $tx) {
+            // Get user info
+            $user_name = '';
+            if (!empty($tx->updated_by)) {
+                $user = get_user_by('id', $tx->updated_by);
+                $user_name = $user ? $user->display_name : __('Unknown User', 'massnahme-gift-cards');
+            }
+
+            // Determine transaction type
+            $tx_type = 'redemption';
+            if (floatval($tx->amount_used) == 0) {
+                $tx_type = 'creation';
+            } elseif (floatval($tx->amount_used) < 0) {
+                $tx_type = 'adjustment';
+            }
+
+            $transactions_data[] = [
+                'id' => intval($tx->id),
+                'gift_card_code' => $tx->gift_card_code,
+                'order_id' => intval($tx->order_id),
+                'amount_used' => floatval($tx->amount_used),
+                'remaining_balance' => floatval($tx->remaining_balance),
+                'formatted_amount' => html_entity_decode(strip_tags(wc_price($tx->amount_used)), ENT_QUOTES, 'UTF-8'),
+                'formatted_balance' => html_entity_decode(strip_tags(wc_price($tx->remaining_balance)), ENT_QUOTES, 'UTF-8'),
+                'updated_by' => intval($tx->updated_by ?? 0),
+                'updated_by_name' => $user_name,
+                'date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($tx->used_at)),
+                'type' => $tx_type
+            ];
+        }
+
+        wp_send_json_success([
+            'transactions' => $transactions_data,
+            'total' => intval($total),
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => ceil($total / $per_page)
+        ]);
     }
 }
