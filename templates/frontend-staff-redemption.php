@@ -660,9 +660,9 @@ $currency_symbol = get_woocommerce_currency_symbol();
         banner.find('.mgc-pos-status-text').text(statusText[card.status] || card.status);
 
         // Card details
-        $('#mgc-pos-balance').text(formatCurrency(card.balance));
+        $('#mgc-pos-balance').html(formatCurrency(card.balance));
         $('#mgc-pos-card-code').text(card.code);
-        $('#mgc-pos-original').text(formatCurrency(card.amount));
+        $('#mgc-pos-original').html(formatCurrency(card.amount));
         $('#mgc-pos-recipient').text(card.recipient_name || card.recipient_email);
         $('#mgc-pos-expires').text(card.expires_at);
 
@@ -718,9 +718,9 @@ $currency_symbol = get_woocommerce_currency_symbol();
 
         if (amount > 0 && amount <= currentBalance) {
             var remaining = currentBalance - amount;
-            $('#mgc-pos-preview-current').text(formatCurrency(currentBalance));
-            $('#mgc-pos-preview-deduct').text('-' + formatCurrency(amount));
-            $('#mgc-pos-preview-remaining').text(formatCurrency(remaining));
+            $('#mgc-pos-preview-current').html(formatCurrency(currentBalance));
+            $('#mgc-pos-preview-deduct').html('-' + formatCurrency(amount));
+            $('#mgc-pos-preview-remaining').html(formatCurrency(remaining));
             $('#mgc-pos-preview').show();
             $('#mgc-pos-confirm').prop('disabled', false);
         } else {
@@ -765,8 +765,8 @@ $currency_symbol = get_woocommerce_currency_symbol();
     }
 
     function showSuccess(amount, remaining) {
-        $('#mgc-pos-success-amount').text('-' + formatCurrency(amount));
-        $('#mgc-pos-success-remaining').text('<?php _e('Remaining balance:', 'massnahme-gift-cards'); ?> ' + formatCurrency(remaining));
+        $('#mgc-pos-success-amount').html('-' + formatCurrency(amount));
+        $('#mgc-pos-success-remaining').html('<?php _e('Remaining balance:', 'massnahme-gift-cards'); ?> ' + formatCurrency(remaining));
         $('#mgc-pos-success').show();
     }
 
