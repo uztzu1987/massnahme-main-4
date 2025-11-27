@@ -1,0 +1,23 @@
+/**
+ * Admin styles for Massnahme Gift Cards
+ */
+
+.mgc-dashboard {
+    margin-top: 20px;
+}
+
+.mgc-validate-result {
+    padding: 15px;
+    margin-top: 20px;
+    border-left: 4px solid #00a0d2;
+    background: #fff;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+}
+
+.mgc-validate-result.success {
+    border-left-color: #46b450;
+}
+
+.mgc-validate-result.error {
+    border-left-color: #dc3232;
+}
