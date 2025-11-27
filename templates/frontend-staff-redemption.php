@@ -5,7 +5,7 @@
  */
 defined('ABSPATH') || exit;
 
-$currency_symbol = get_woocommerce_currency_symbol();
+$currency_symbol = html_entity_decode(get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8');
 ?>
 <div class="mgc-pos-container">
     <!-- Header -->
