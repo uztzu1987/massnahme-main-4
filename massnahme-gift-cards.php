@@ -223,16 +223,19 @@ function mgc_create_tables() {
         order_id bigint(20) NOT NULL,
         amount_used decimal(10,2) NOT NULL,
         remaining_balance decimal(10,2) NOT NULL,
+        updated_by bigint(20) DEFAULT NULL,
         used_at datetime DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY  (id),
         KEY gift_card_code (gift_card_code),
-        KEY order_id (order_id)
+        KEY order_id (order_id),
+        KEY updated_by (updated_by)
     ) $charset_collate;";
 
     dbDelta($sql2);
 
     // Run migration for existing installations
     mgc_migrate_delivery_columns();
+    mgc_migrate_updated_by_column();
 }
 
 /**
@@ -265,5 +268,25 @@ function mgc_migrate_delivery_columns() {
     if (empty($pickup_status_exists)) {
         $wpdb->query("ALTER TABLE `$table_name` ADD COLUMN `pickup_status` varchar(20) DEFAULT NULL AFTER `pickup_location`");
         $wpdb->query("ALTER TABLE `$table_name` ADD INDEX `pickup_status` (`pickup_status`)");
+    }
+}
+
+/**
+ * Add updated_by column to usage table for tracking who made updates
+ */
+function mgc_migrate_updated_by_column() {
+    global $wpdb;
+
+    $usage_table = $wpdb->prefix . 'mgc_gift_card_usage';
+
+    // Check if updated_by column exists
+    $column_exists = $wpdb->get_results($wpdb->prepare(
+        "SHOW COLUMNS FROM `$usage_table` LIKE %s",
+        'updated_by'
+    ));
+
+    if (empty($column_exists)) {
+        $wpdb->query("ALTER TABLE `$usage_table` ADD COLUMN `updated_by` bigint(20) DEFAULT NULL AFTER `remaining_balance`");
+        $wpdb->query("ALTER TABLE `$usage_table` ADD INDEX `updated_by` (`updated_by`)");
     }
 }

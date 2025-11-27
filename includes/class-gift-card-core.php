@@ -47,17 +47,17 @@ class MGC_Core {
         // Shortcodes
         add_shortcode('massnahme_gift_balance', [$this, 'balance_checker_shortcode']);
         add_shortcode('massnahme_staff_redemption', [$this, 'staff_redemption_shortcode']);
+        add_shortcode('massnahme_admin_dashboard', [$this, 'admin_dashboard_shortcode']);
 
         // Frontend staff AJAX handlers (for logged-in staff)
         add_action('wp_ajax_mgc_frontend_staff_lookup', [$this, 'ajax_frontend_staff_lookup']);
         add_action('wp_ajax_mgc_frontend_redeem', [$this, 'ajax_frontend_redeem']);
         add_action('wp_ajax_mgc_frontend_update_pickup_status', [$this, 'ajax_frontend_update_pickup_status']);
+        add_action('wp_ajax_mgc_frontend_create_card', [$this, 'ajax_frontend_create_card']);
+        add_action('wp_ajax_mgc_frontend_list_cards', [$this, 'ajax_frontend_list_cards']);
 
         // Add shipping fee for gift card delivery
         add_action('woocommerce_cart_calculate_fees', [$this, 'add_gift_card_shipping_fee']);
-
-        // Start session for delivery method tracking
-        add_action('init', [$this, 'start_session'], 1);
 
         // Custom amount product hooks
         add_action('woocommerce_before_add_to_cart_button', [$this, 'display_custom_amount_field']);
@@ -96,12 +96,6 @@ class MGC_Core {
         $this->create_custom_amount_product();
     }
 
-    public function start_session() {
-        if (!session_id() && !headers_sent()) {
-            session_start();
-        }
-    }
-    
     public function create_gift_products() {
         // Only run once
         if (get_option('mgc_products_created') === 'yes') {
@@ -349,9 +343,9 @@ class MGC_Core {
             $order->update_meta_data('_mgc_recipient_name', sanitize_text_field($_POST['mgc_recipient_name']));
         }
 
-        // Clear the session delivery method
-        if (isset($_SESSION['mgc_delivery_method'])) {
-            unset($_SESSION['mgc_delivery_method']);
+        // Clear the WC session delivery method
+        if (WC()->session) {
+            WC()->session->set('mgc_delivery_method', null);
         }
     }
     
@@ -396,7 +390,7 @@ class MGC_Core {
     }
 
     /**
-     * AJAX handler for setting delivery method in session
+     * AJAX handler for setting delivery method in WC session
      */
     public function ajax_set_delivery_method() {
         check_ajax_referer('mgc_nonce', 'nonce');
@@ -404,7 +398,9 @@ class MGC_Core {
         $method = sanitize_text_field($_POST['method'] ?? 'digital');
 
         if (in_array($method, ['digital', 'pickup', 'shipping'])) {
-            $_SESSION['mgc_delivery_method'] = $method;
+            if (WC()->session) {
+                WC()->session->set('mgc_delivery_method', $method);
+            }
             wp_send_json_success(['method' => $method]);
         } else {
             wp_send_json_error(__('Invalid delivery method', 'massnahme-gift-cards'));
@@ -424,8 +420,11 @@ class MGC_Core {
             return;
         }
 
-        // Check if shipping method is selected
-        $delivery_method = $_SESSION['mgc_delivery_method'] ?? 'digital';
+        // Check if shipping method is selected from WC session
+        $delivery_method = 'digital';
+        if (WC()->session) {
+            $delivery_method = WC()->session->get('mgc_delivery_method', 'digital');
+        }
 
         if ($delivery_method !== 'shipping') {
             return;
@@ -490,10 +489,13 @@ class MGC_Core {
         // Successful validation - reset rate limit for this IP
         delete_transient($rate_limit_key);
 
+        // Use html_entity_decode to ensure proper currency symbol display
+        $formatted_balance = html_entity_decode(strip_tags(wc_price($gift_card->balance)), ENT_QUOTES, 'UTF-8');
+
         wp_send_json_success([
             'balance' => $gift_card->balance,
             'expires' => date_i18n(get_option('date_format'), strtotime($gift_card->expires_at)),
-            'message' => sprintf(__('Balance: %s', 'massnahme-gift-cards'), wc_price($gift_card->balance))
+            'message' => sprintf(__('Balance: %s', 'massnahme-gift-cards'), $formatted_balance)
         ]);
     }
 
@@ -739,11 +741,18 @@ class MGC_Core {
 
         $history_data = [];
         foreach ($history as $item) {
+            $user_name = '';
+            if (!empty($item->updated_by)) {
+                $user = get_user_by('id', $item->updated_by);
+                $user_name = $user ? $user->display_name : __('Unknown User', 'massnahme-gift-cards');
+            }
             $history_data[] = [
                 'date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($item->used_at)),
                 'amount' => floatval($item->amount_used),
                 'order_id' => intval($item->order_id),
-                'remaining' => floatval($item->remaining_balance)
+                'remaining' => floatval($item->remaining_balance),
+                'updated_by' => intval($item->updated_by ?? 0),
+                'updated_by_name' => $user_name
             ];
         }
 
@@ -837,7 +846,7 @@ class MGC_Core {
                 ['%s']
             );
 
-            // Log the redemption
+            // Log the redemption with user tracking
             $wpdb->insert(
                 $wpdb->prefix . 'mgc_gift_card_usage',
                 [
@@ -845,6 +854,7 @@ class MGC_Core {
                     'order_id' => 0, // 0 = manual/POS redemption
                     'amount_used' => $redeem_amount,
                     'remaining_balance' => $new_balance,
+                    'updated_by' => get_current_user_id(),
                     'used_at' => current_time('mysql')
                 ]
             );
@@ -863,7 +873,7 @@ class MGC_Core {
                 'redeemed' => $redeem_amount,
                 'new_balance' => $new_balance,
                 'new_status' => $new_status,
-                'formatted_balance' => strip_tags(wc_price($new_balance))
+                'formatted_balance' => html_entity_decode(strip_tags(wc_price($new_balance)), ENT_QUOTES, 'UTF-8')
             ]);
 
         } catch (Exception $e) {
@@ -975,5 +985,193 @@ class MGC_Core {
         ];
 
         wp_mail($to, $subject, $message, $headers);
+    }
+
+    /**
+     * Admin Dashboard shortcode for frontend gift card management
+     */
+    public function admin_dashboard_shortcode($atts) {
+        // Check if user is logged in and has permission
+        if (!is_user_logged_in()) {
+            return '<div class="mgc-admin-login-required">' .
+                   '<p>' . __('Please log in to access the admin dashboard.', 'massnahme-gift-cards') . '</p>' .
+                   '<a href="' . esc_url(wp_login_url(get_permalink())) . '" class="button">' . __('Log In', 'massnahme-gift-cards') . '</a>' .
+                   '</div>';
+        }
+
+        if (!current_user_can('manage_woocommerce')) {
+            return '<div class="mgc-admin-no-permission">' .
+                   '<p>' . __('You do not have permission to access this page.', 'massnahme-gift-cards') . '</p>' .
+                   '</div>';
+        }
+
+        ob_start();
+        include MGC_PLUGIN_DIR . 'templates/frontend-admin-dashboard.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * AJAX: Create a new gift card from frontend admin
+     */
+    public function ajax_frontend_create_card() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'mgc_frontend_nonce')) {
+            wp_send_json_error(__('Security check failed', 'massnahme-gift-cards'));
+        }
+
+        // Check permission
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(__('Permission denied', 'massnahme-gift-cards'));
+        }
+
+        $amount = floatval($_POST['amount'] ?? 0);
+        $custom_code = sanitize_text_field($_POST['custom_code'] ?? '');
+        $recipient_name = sanitize_text_field($_POST['recipient_name'] ?? '');
+        $recipient_email = sanitize_email($_POST['recipient_email'] ?? '');
+        $message = sanitize_textarea_field($_POST['message'] ?? '');
+        $is_physical = !empty($_POST['is_physical']);
+
+        // Validate amount
+        if ($amount <= 0) {
+            wp_send_json_error(__('Please enter a valid amount', 'massnahme-gift-cards'));
+        }
+
+        // Generate or validate code
+        if (!empty($custom_code)) {
+            // Validate custom code format (alphanumeric with dashes)
+            if (!preg_match('/^[A-Za-z0-9\-]{4,50}$/', $custom_code)) {
+                wp_send_json_error(__('Invalid code format. Use 4-50 alphanumeric characters or dashes.', 'massnahme-gift-cards'));
+            }
+
+            // Convert to uppercase
+            $code = strtoupper($custom_code);
+
+            // Check if code already exists
+            if ($this->code_exists($code)) {
+                wp_send_json_error(__('This code already exists. Please use a different code.', 'massnahme-gift-cards'));
+            }
+        } else {
+            // Generate unique code
+            $code = $this->generate_unique_code();
+        }
+
+        global $wpdb;
+        $settings = get_option('mgc_settings', []);
+        $expiry_days = $settings['expiry_days'] ?? 730;
+
+        // Insert into database
+        $result = $wpdb->insert(
+            $wpdb->prefix . 'mgc_gift_cards',
+            [
+                'code' => $code,
+                'amount' => $amount,
+                'balance' => $amount,
+                'order_id' => 0, // 0 = manually created
+                'purchaser_email' => wp_get_current_user()->user_email,
+                'recipient_email' => $recipient_email ?: null,
+                'recipient_name' => $recipient_name ?: null,
+                'message' => $message ?: null,
+                'delivery_method' => $is_physical ? 'physical' : 'digital',
+                'expires_at' => date('Y-m-d H:i:s', strtotime('+' . $expiry_days . ' days')),
+                'status' => 'active'
+            ]
+        );
+
+        if ($result === false) {
+            wp_send_json_error(__('Failed to create gift card', 'massnahme-gift-cards'));
+        }
+
+        $card_id = $wpdb->insert_id;
+
+        // Create WooCommerce coupon
+        MGC_Coupon::get_instance()->create_coupon($code, $amount, 0);
+
+        // Log the creation
+        $wpdb->insert(
+            $wpdb->prefix . 'mgc_gift_card_usage',
+            [
+                'gift_card_code' => $code,
+                'order_id' => 0,
+                'amount_used' => 0,
+                'remaining_balance' => $amount,
+                'updated_by' => get_current_user_id(),
+                'used_at' => current_time('mysql')
+            ]
+        );
+
+        wp_send_json_success([
+            'message' => __('Gift card created successfully', 'massnahme-gift-cards'),
+            'id' => $card_id,
+            'code' => $code,
+            'amount' => $amount,
+            'formatted_amount' => html_entity_decode(strip_tags(wc_price($amount)), ENT_QUOTES, 'UTF-8')
+        ]);
+    }
+
+    /**
+     * AJAX: List all gift cards for frontend admin
+     */
+    public function ajax_frontend_list_cards() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', 'mgc_frontend_nonce')) {
+            wp_send_json_error(__('Security check failed', 'massnahme-gift-cards'));
+        }
+
+        // Check permission
+        if (!current_user_can('manage_woocommerce')) {
+            wp_send_json_error(__('Permission denied', 'massnahme-gift-cards'));
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'mgc_gift_cards';
+        $usage_table = $wpdb->prefix . 'mgc_gift_card_usage';
+
+        $page = max(1, intval($_POST['page'] ?? 1));
+        $per_page = 20;
+        $offset = ($page - 1) * $per_page;
+
+        // Get total count
+        $total = $wpdb->get_var("SELECT COUNT(*) FROM $table");
+
+        // Get cards
+        $cards = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM $table ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            $per_page,
+            $offset
+        ));
+
+        $cards_data = [];
+        foreach ($cards as $card) {
+            // Get transaction count
+            $transaction_count = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM $usage_table WHERE gift_card_code = %s",
+                $card->code
+            ));
+
+            $cards_data[] = [
+                'id' => intval($card->id),
+                'code' => $card->code,
+                'amount' => floatval($card->amount),
+                'balance' => floatval($card->balance),
+                'formatted_amount' => html_entity_decode(strip_tags(wc_price($card->amount)), ENT_QUOTES, 'UTF-8'),
+                'formatted_balance' => html_entity_decode(strip_tags(wc_price($card->balance)), ENT_QUOTES, 'UTF-8'),
+                'recipient_name' => $card->recipient_name ?? '',
+                'recipient_email' => $card->recipient_email ?? '',
+                'delivery_method' => $card->delivery_method ?? 'digital',
+                'status' => $card->status,
+                'created_at' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($card->created_at)),
+                'expires_at' => date_i18n(get_option('date_format'), strtotime($card->expires_at)),
+                'transaction_count' => intval($transaction_count),
+                'order_id' => intval($card->order_id)
+            ];
+        }
+
+        wp_send_json_success([
+            'cards' => $cards_data,
+            'total' => intval($total),
+            'page' => $page,
+            'per_page' => $per_page,
+            'total_pages' => ceil($total / $per_page)
+        ]);
     }
 }

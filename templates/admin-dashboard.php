@@ -66,6 +66,7 @@ $recent_cards = $wpdb->get_results(
                 <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
+                            <th style="width: 50px;"><?php _e('ID', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('Code', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('Balance', 'massnahme-gift-cards'); ?></th>
@@ -86,9 +87,10 @@ $recent_cards = $wpdb->get_results(
                             }
                             ?>
                             <tr data-code="<?php echo esc_attr($card->code); ?>">
+                                <td><strong>#<?php echo esc_html($card->id); ?></strong></td>
                                 <td><strong><?php echo esc_html($card->code); ?></strong></td>
-                                <td><?php echo wc_price($card->amount); ?></td>
-                                <td class="mgc-balance-cell"><?php echo wc_price($card->balance); ?></td>
+                                <td><?php echo esc_html(html_entity_decode(strip_tags(wc_price($card->amount)), ENT_QUOTES, 'UTF-8')); ?></td>
+                                <td class="mgc-balance-cell"><?php echo esc_html(html_entity_decode(strip_tags(wc_price($card->balance)), ENT_QUOTES, 'UTF-8')); ?></td>
                                 <td>
                                     <?php if (!empty($card->recipient_name)) : ?>
                                         <strong><?php echo esc_html($card->recipient_name); ?></strong><br>
@@ -110,11 +112,16 @@ $recent_cards = $wpdb->get_results(
                                 </td>
                                 <td><?php echo date_i18n(get_option('date_format'), strtotime($card->created_at)); ?></td>
                                 <td>
+                                    <button type="button" class="button button-small mgc-view-history"
+                                        data-code="<?php echo esc_attr($card->code); ?>"
+                                        data-id="<?php echo esc_attr($card->id); ?>">
+                                        <?php _e('History', 'massnahme-gift-cards'); ?>
+                                    </button>
                                     <button type="button" class="button button-small mgc-edit-balance"
                                         data-code="<?php echo esc_attr($card->code); ?>"
                                         data-balance="<?php echo esc_attr($card->balance); ?>"
                                         data-amount="<?php echo esc_attr($card->amount); ?>">
-                                        <?php _e('Edit Balance', 'massnahme-gift-cards'); ?>
+                                        <?php _e('Edit', 'massnahme-gift-cards'); ?>
                                     </button>
                                 </td>
                             </tr>
@@ -151,6 +158,43 @@ $recent_cards = $wpdb->get_results(
         <div class="mgc-modal-footer">
             <button type="button" class="button mgc-modal-cancel"><?php _e('Cancel', 'massnahme-gift-cards'); ?></button>
             <button type="button" class="button button-primary mgc-modal-save"><?php _e('Update Balance', 'massnahme-gift-cards'); ?></button>
+        </div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div id="mgc-history-modal" class="mgc-modal" style="display: none;">
+    <div class="mgc-modal-content mgc-modal-wide">
+        <div class="mgc-modal-header">
+            <h3><?php _e('Gift Card Transaction History', 'massnahme-gift-cards'); ?></h3>
+            <button type="button" class="mgc-modal-close">&times;</button>
+        </div>
+        <div class="mgc-modal-body">
+            <div class="mgc-history-card-info">
+                <p><strong><?php _e('ID:', 'massnahme-gift-cards'); ?></strong> <span id="mgc-history-id"></span></p>
+                <p><strong><?php _e('Code:', 'massnahme-gift-cards'); ?></strong> <span id="mgc-history-code"></span></p>
+                <p><strong><?php _e('Original Amount:', 'massnahme-gift-cards'); ?></strong> <span id="mgc-history-amount"></span></p>
+                <p><strong><?php _e('Current Balance:', 'massnahme-gift-cards'); ?></strong> <span id="mgc-history-balance"></span></p>
+                <p><strong><?php _e('Status:', 'massnahme-gift-cards'); ?></strong> <span id="mgc-history-status"></span></p>
+            </div>
+            <h4><?php _e('Transaction Log', 'massnahme-gift-cards'); ?></h4>
+            <div id="mgc-history-loading"><?php _e('Loading...', 'massnahme-gift-cards'); ?></div>
+            <table id="mgc-history-table" class="wp-list-table widefat striped" style="display: none;">
+                <thead>
+                    <tr>
+                        <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Amount Used', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Order ID', 'massnahme-gift-cards'); ?></th>
+                        <th><?php _e('Updated By', 'massnahme-gift-cards'); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="mgc-history-tbody"></tbody>
+            </table>
+            <p id="mgc-history-empty" style="display: none;"><?php _e('No transactions found.', 'massnahme-gift-cards'); ?></p>
+        </div>
+        <div class="mgc-modal-footer">
+            <button type="button" class="button mgc-modal-close-btn"><?php _e('Close', 'massnahme-gift-cards'); ?></button>
         </div>
     </div>
 </div>
@@ -324,7 +368,62 @@ $recent_cards = $wpdb->get_results(
     background: #f6f7f7;
 }
 
-.mgc-edit-balance {
+.mgc-edit-balance, .mgc-view-history {
     white-space: nowrap;
+}
+
+/* History Modal Specific Styles */
+.mgc-modal-wide {
+    max-width: 700px;
+}
+
+.mgc-history-card-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    background: #f6f7f7;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.mgc-history-card-info p {
+    margin: 5px 0;
+}
+
+#mgc-history-table {
+    margin-top: 10px;
+}
+
+#mgc-history-table th,
+#mgc-history-table td {
+    padding: 10px;
+}
+
+.mgc-history-manual {
+    color: #856404;
+    background: #fff3cd;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.mgc-history-order-link {
+    color: #2271b1;
+    text-decoration: none;
+}
+
+.mgc-history-order-link:hover {
+    text-decoration: underline;
+}
+
+.mgc-history-user {
+    font-size: 12px;
+    color: #666;
+}
+
+.mgc-history-user-id {
+    color: #999;
+    font-size: 11px;
 }
 </style>
