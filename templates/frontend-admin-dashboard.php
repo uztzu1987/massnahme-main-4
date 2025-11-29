@@ -73,7 +73,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
     </div>
-    -->
 
     <!-- COMMENTED OUT: All Cards Tab -->
     <!--
@@ -132,7 +131,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
         <p id="mgc-fd-no-cards" style="display: none;"><?php _e('No gift cards found.', 'massnahme-gift-cards'); ?></p>
     </div>
-    -->
 
     <!-- ============================================ -->
     <!-- CREATE GIFT CARD TAB -->
@@ -512,7 +510,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
         <p id="mgc-fd-no-transactions" style="display: none;"><?php _e('No transactions found.', 'massnahme-gift-cards'); ?></p>
     </div>
-    -->
 
     <!-- COMMENTED OUT: Create Card Tab -->
     <!--
@@ -598,7 +595,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </form>
         </div>
     </div>
-    -->
 
     <!-- COMMENTED OUT: Card Detail Modal (now using inline display in redemption section) -->
     <!--
