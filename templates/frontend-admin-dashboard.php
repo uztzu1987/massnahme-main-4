@@ -25,15 +25,18 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         <span class="mgc-fd-user"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
     </div>
 
-    <!-- Tab Navigation -->
+    <!-- COMMENTED OUT: Tab Navigation - Simplified to show only Redemption -->
+    <!--
     <div class="mgc-fd-tabs">
         <button class="mgc-fd-tab active" data-tab="overview"><?php _e('Overview', 'massnahme-gift-cards'); ?></button>
         <button class="mgc-fd-tab" data-tab="all-cards"><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></button>
         <button class="mgc-fd-tab" data-tab="transactions"><?php _e('Transaction History', 'massnahme-gift-cards'); ?></button>
         <button class="mgc-fd-tab" data-tab="create"><?php _e('Create Gift Card', 'massnahme-gift-cards'); ?></button>
     </div>
+    -->
 
-    <!-- Overview Tab -->
+    <!-- COMMENTED OUT: Overview Tab -->
+    <!--
     <div class="mgc-fd-content mgc-fd-tab-content active" id="mgc-tab-overview">
         <div class="mgc-fd-stats">
             <div class="mgc-fd-stat-card">
@@ -64,8 +67,10 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
     </div>
+    -->
 
-    <!-- All Cards Tab -->
+    <!-- COMMENTED OUT: All Cards Tab -->
+    <!--
     <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-all-cards">
         <div class="mgc-fd-cards-header">
             <h3><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></h3>
@@ -74,7 +79,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
 
-        <!-- Search and Filter -->
         <div class="mgc-fd-filters">
             <div class="mgc-fd-search-wrap">
                 <input type="text" id="mgc-fd-search" placeholder="<?php esc_attr_e('Search by code, recipient...', 'massnahme-gift-cards'); ?>" class="mgc-fd-search-input">
@@ -122,8 +126,155 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
         <p id="mgc-fd-no-cards" style="display: none;"><?php _e('No gift cards found.', 'massnahme-gift-cards'); ?></p>
     </div>
+    -->
 
-    <!-- Transaction History Tab -->
+    <!-- ============================================ -->
+    <!-- GIFT CARD REDEMPTION - Main Active Section -->
+    <!-- ============================================ -->
+
+    <!-- Code Entry Section -->
+    <div class="mgc-fd-redemption-section">
+        <div class="mgc-fd-code-entry">
+            <div class="mgc-fd-input-group">
+                <input type="text"
+                       id="mgc-redemption-code"
+                       class="mgc-fd-code-input"
+                       placeholder="<?php esc_attr_e('Enter gift card code...', 'massnahme-gift-cards'); ?>"
+                       autocomplete="off">
+                <button type="button" id="mgc-redemption-lookup" class="mgc-fd-btn mgc-fd-btn-primary">
+                    <?php _e('Look Up', 'massnahme-gift-cards'); ?>
+                </button>
+            </div>
+        </div>
+
+        <!-- Card Display (hidden until lookup) -->
+        <div id="mgc-redemption-card-display" style="display: none;">
+            <!-- Status Banner -->
+            <div id="mgc-redemption-status-banner" class="mgc-fd-status-banner">
+                <span class="mgc-fd-status-icon"></span>
+                <span class="mgc-fd-status-text"></span>
+            </div>
+
+            <!-- Balance Display -->
+            <div class="mgc-fd-balance-box">
+                <span class="mgc-fd-balance-label"><?php _e('Available Balance', 'massnahme-gift-cards'); ?></span>
+                <span id="mgc-redemption-balance" class="mgc-fd-balance-value"></span>
+            </div>
+
+            <!-- Card Info Grid -->
+            <div class="mgc-fd-card-info-grid">
+                <div class="mgc-fd-info-item">
+                    <span class="mgc-fd-info-label"><?php _e('Code', 'massnahme-gift-cards'); ?></span>
+                    <span id="mgc-redemption-card-code" class="mgc-fd-info-value mgc-fd-code"></span>
+                </div>
+                <div class="mgc-fd-info-item">
+                    <span class="mgc-fd-info-label"><?php _e('Original Amount', 'massnahme-gift-cards'); ?></span>
+                    <span id="mgc-redemption-original" class="mgc-fd-info-value"></span>
+                </div>
+                <div class="mgc-fd-info-item">
+                    <span class="mgc-fd-info-label"><?php _e('Recipient', 'massnahme-gift-cards'); ?></span>
+                    <span id="mgc-redemption-recipient" class="mgc-fd-info-value"></span>
+                </div>
+                <div class="mgc-fd-info-item">
+                    <span class="mgc-fd-info-label"><?php _e('Expires', 'massnahme-gift-cards'); ?></span>
+                    <span id="mgc-redemption-expires" class="mgc-fd-info-value"></span>
+                </div>
+            </div>
+
+            <!-- Redemption Amount Section -->
+            <div id="mgc-redemption-amount-section" class="mgc-fd-redemption-amount">
+                <h4><?php _e('Redeem Amount', 'massnahme-gift-cards'); ?></h4>
+
+                <div class="mgc-fd-amount-input-wrap">
+                    <span class="mgc-fd-currency-symbol"><?php echo esc_html($currency_symbol); ?></span>
+                    <input type="number"
+                           id="mgc-redemption-amount"
+                           class="mgc-fd-amount-input-field"
+                           step="0.01"
+                           min="0.01"
+                           placeholder="0.00">
+                </div>
+
+                <div class="mgc-fd-quick-amounts-grid">
+                    <button type="button" class="mgc-fd-quick-amt" data-amount="10"><?php echo esc_html($currency_symbol); ?>10</button>
+                    <button type="button" class="mgc-fd-quick-amt" data-amount="25"><?php echo esc_html($currency_symbol); ?>25</button>
+                    <button type="button" class="mgc-fd-quick-amt" data-amount="50"><?php echo esc_html($currency_symbol); ?>50</button>
+                    <button type="button" class="mgc-fd-quick-amt" data-amount="100"><?php echo esc_html($currency_symbol); ?>100</button>
+                    <button type="button" class="mgc-fd-quick-amt mgc-fd-quick-full" data-amount="full"><?php _e('FULL', 'massnahme-gift-cards'); ?></button>
+                </div>
+
+                <!-- Preview -->
+                <div id="mgc-redemption-preview" class="mgc-fd-preview" style="display: none;">
+                    <div class="mgc-fd-preview-row">
+                        <span><?php _e('Current:', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-preview-current"></span>
+                    </div>
+                    <div class="mgc-fd-preview-row mgc-fd-preview-deduct">
+                        <span><?php _e('Redeem:', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-preview-deduct"></span>
+                    </div>
+                    <div class="mgc-fd-preview-row mgc-fd-preview-remaining">
+                        <span><?php _e('Remaining:', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-preview-remaining"></span>
+                    </div>
+                </div>
+
+                <button type="button" id="mgc-redemption-confirm" class="mgc-fd-btn mgc-fd-btn-success mgc-fd-btn-large" disabled>
+                    <?php _e('Confirm Redemption', 'massnahme-gift-cards'); ?>
+                </button>
+            </div>
+
+            <!-- Transaction History for this card -->
+            <div class="mgc-fd-card-transactions">
+                <h4><?php _e('Transaction History', 'massnahme-gift-cards'); ?></h4>
+                <div id="mgc-redemption-history-loading" class="mgc-fd-loading"><?php _e('Loading...', 'massnahme-gift-cards'); ?></div>
+                <table class="mgc-fd-table mgc-fd-history-table" id="mgc-redemption-history-table" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('User ID', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('User Name', 'massnahme-gift-cards'); ?></th>
+                        </tr>
+                    </thead>
+                    <tbody id="mgc-redemption-history-tbody"></tbody>
+                </table>
+                <p id="mgc-redemption-no-history" style="display: none;"><?php _e('No transactions yet.', 'massnahme-gift-cards'); ?></p>
+            </div>
+
+            <!-- Clear Button -->
+            <button type="button" id="mgc-redemption-clear" class="mgc-fd-btn mgc-fd-btn-secondary mgc-fd-btn-large">
+                <?php _e('Clear / New Lookup', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+
+        <!-- Error Display -->
+        <div id="mgc-redemption-error" class="mgc-fd-error-display" style="display: none;">
+            <div class="mgc-fd-error-icon">!</div>
+            <div id="mgc-redemption-error-message" class="mgc-fd-error-text"></div>
+            <button type="button" id="mgc-redemption-retry" class="mgc-fd-btn mgc-fd-btn-secondary">
+                <?php _e('Try Again', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div id="mgc-redemption-success" class="mgc-fd-success-overlay" style="display: none;">
+        <div class="mgc-fd-success-content">
+            <div class="mgc-fd-success-icon">✓</div>
+            <div class="mgc-fd-success-title"><?php _e('Redemption Complete!', 'massnahme-gift-cards'); ?></div>
+            <div id="mgc-redemption-success-amount" class="mgc-fd-success-amount"></div>
+            <div id="mgc-redemption-success-remaining" class="mgc-fd-success-remaining"></div>
+            <button type="button" id="mgc-redemption-success-close" class="mgc-fd-btn mgc-fd-btn-primary">
+                <?php _e('Done', 'massnahme-gift-cards'); ?>
+            </button>
+        </div>
+    </div>
+
+    <!-- COMMENTED OUT: Transaction History Tab (standalone - now integrated above) -->
+    <!--
     <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-transactions">
         <div class="mgc-fd-cards-header">
             <h3><?php _e('Transaction History', 'massnahme-gift-cards'); ?></h3>
@@ -132,7 +283,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
 
-        <!-- Transaction Filters -->
         <div class="mgc-fd-filters">
             <div class="mgc-fd-search-wrap">
                 <input type="text" id="mgc-fd-transaction-search" placeholder="<?php esc_attr_e('Search by gift card code...', 'massnahme-gift-cards'); ?>" class="mgc-fd-search-input">
@@ -171,8 +321,10 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
         <p id="mgc-fd-no-transactions" style="display: none;"><?php _e('No transactions found.', 'massnahme-gift-cards'); ?></p>
     </div>
+    -->
 
-    <!-- Create Card Tab -->
+    <!-- COMMENTED OUT: Create Card Tab -->
+    <!--
     <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-create">
         <div class="mgc-fd-create-form">
             <h3><?php _e('Create New Gift Card', 'massnahme-gift-cards'); ?></h3>
@@ -255,8 +407,10 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </form>
         </div>
     </div>
+    -->
 
-    <!-- Card Detail Modal -->
+    <!-- COMMENTED OUT: Card Detail Modal (now using inline display in redemption section) -->
+    <!--
     <div id="mgc-fd-detail-modal" class="mgc-fd-modal" style="display: none;">
         <div class="mgc-fd-modal-content">
             <div class="mgc-fd-modal-header">
@@ -320,8 +474,10 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </div>
         </div>
     </div>
+    -->
 
-    <!-- Success Modal -->
+    <!-- COMMENTED OUT: Success Modal (old tabbed interface) -->
+    <!--
     <div id="mgc-fd-success-modal" class="mgc-fd-modal" style="display: none;">
         <div class="mgc-fd-modal-content mgc-fd-success-content">
             <div class="mgc-fd-success-icon">&#10003;</div>
@@ -333,6 +489,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             <button type="button" class="mgc-fd-btn mgc-fd-btn-primary" id="mgc-fd-success-close"><?php _e('Done', 'massnahme-gift-cards'); ?></button>
         </div>
     </div>
+    -->
 </div>
 
 <style>
@@ -992,6 +1149,337 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     padding: 10px 12px;
 }
 
+/* ============================================ */
+/* REDEMPTION SECTION STYLES */
+/* ============================================ */
+
+.mgc-fd-redemption-section {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.mgc-fd-code-entry {
+    margin-bottom: 25px;
+}
+
+.mgc-fd-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.mgc-fd-code-input {
+    flex: 1;
+    padding: 16px 20px;
+    font-size: 18px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.mgc-fd-code-input:focus {
+    border-color: #2271b1;
+}
+
+/* Status Banner */
+.mgc-fd-status-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.mgc-fd-status-banner.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.mgc-fd-status-banner.status-used {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.mgc-fd-status-banner.status-expired {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Balance Box */
+.mgc-fd-balance-box {
+    text-align: center;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, #1e3a5f, #2271b1);
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.mgc-fd-balance-label {
+    display: block;
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.mgc-fd-balance-value {
+    display: block;
+    color: #fff;
+    font-size: 42px;
+    font-weight: 700;
+}
+
+/* Card Info Grid */
+.mgc-fd-card-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.mgc-fd-info-item {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    border-radius: 8px;
+}
+
+.mgc-fd-info-label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+.mgc-fd-info-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+}
+
+.mgc-fd-info-value.mgc-fd-code {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+/* Redemption Amount Section */
+.mgc-fd-redemption-amount {
+    background: #fff;
+    border: 2px solid #eee;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.mgc-fd-redemption-amount h4 {
+    margin: 0 0 20px 0;
+    text-align: center;
+    color: #1a1a1a;
+    font-size: 18px;
+}
+
+.mgc-fd-amount-input-wrap {
+    display: flex;
+    align-items: center;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.mgc-fd-currency-symbol {
+    padding: 15px 18px;
+    background: #f8f9fa;
+    font-size: 22px;
+    font-weight: 600;
+    color: #666;
+}
+
+.mgc-fd-amount-input-field {
+    flex: 1;
+    border: none;
+    padding: 18px 15px;
+    font-size: 26px;
+    text-align: center;
+    outline: none;
+}
+
+/* Quick Amount Grid */
+.mgc-fd-quick-amounts-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.mgc-fd-quick-amt {
+    padding: 12px 8px;
+    border: 2px solid #ddd;
+    background: #fff;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mgc-fd-quick-amt:hover {
+    border-color: #2271b1;
+    color: #2271b1;
+}
+
+.mgc-fd-quick-amt.selected {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+
+.mgc-fd-quick-full {
+    background: #e8f4fc;
+}
+
+/* Preview */
+.mgc-fd-preview {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.mgc-fd-preview-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 15px;
+}
+
+.mgc-fd-preview-deduct {
+    color: #dc3545;
+}
+
+.mgc-fd-preview-remaining {
+    font-weight: 700;
+    font-size: 17px;
+    color: #28a745;
+    border-top: 2px solid #ddd;
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+/* Success Button */
+.mgc-fd-btn-success {
+    background: #28a745;
+    color: #fff;
+}
+
+.mgc-fd-btn-success:hover:not(:disabled) {
+    background: #218838;
+}
+
+/* Card Transactions */
+.mgc-fd-card-transactions {
+    background: #fff;
+    border: 2px solid #eee;
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+}
+
+.mgc-fd-card-transactions h4 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #1a1a1a;
+}
+
+/* Error Display */
+.mgc-fd-error-display {
+    text-align: center;
+    padding: 40px 20px;
+    background: #fff;
+    border-radius: 15px;
+    border: 2px solid #f8d7da;
+}
+
+.mgc-fd-error-icon {
+    width: 60px;
+    height: 60px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 60px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+}
+
+.mgc-fd-error-text {
+    font-size: 18px;
+    color: #721c24;
+    margin-bottom: 20px;
+}
+
+/* Success Overlay */
+.mgc-fd-success-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.mgc-fd-success-content {
+    background: #fff;
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    max-width: 90%;
+    width: 400px;
+}
+
+.mgc-fd-success-icon {
+    width: 80px;
+    height: 80px;
+    background: #28a745;
+    color: #fff;
+    font-size: 48px;
+    line-height: 80px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+}
+
+.mgc-fd-success-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #28a745;
+    margin-bottom: 15px;
+}
+
+.mgc-fd-success-amount {
+    font-size: 36px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 10px;
+}
+
+.mgc-fd-success-remaining {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .mgc-fd-tabs {
@@ -1036,6 +1524,23 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
     .mgc-fd-table-responsive {
         overflow-x: auto;
+    }
+
+    /* Redemption section responsive */
+    .mgc-fd-input-group {
+        flex-direction: column;
+    }
+
+    .mgc-fd-card-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .mgc-fd-quick-amounts-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .mgc-fd-balance-value {
+        font-size: 32px;
     }
 }
 </style>
@@ -1412,7 +1917,234 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     $(document).on('keydown', function(e) {
         if (e.key === 'Escape') {
             $('.mgc-fd-modal').hide();
+            $('#mgc-redemption-success').hide();
         }
+    });
+
+    // ============================================
+    // REDEMPTION SECTION - New Simplified Interface
+    // ============================================
+
+    var currentRedemptionCard = null;
+    var currentRedemptionBalance = 0;
+
+    // Lookup gift card for redemption
+    function lookupRedemptionCard() {
+        var code = $('#mgc-redemption-code').val().trim().toUpperCase();
+        if (!code) {
+            showRedemptionError('<?php _e('Please enter a gift card code', 'massnahme-gift-cards'); ?>');
+            return;
+        }
+
+        $('#mgc-redemption-lookup').prop('disabled', true).text('<?php _e('Looking up...', 'massnahme-gift-cards'); ?>');
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'mgc_frontend_staff_lookup',
+                nonce: nonce,
+                code: code
+            },
+            success: function(response) {
+                if (response.success) {
+                    displayRedemptionCard(response.data);
+                } else {
+                    showRedemptionError(response.data || '<?php _e('Gift card not found', 'massnahme-gift-cards'); ?>');
+                }
+            },
+            error: function() {
+                showRedemptionError('<?php _e('Connection error. Please try again.', 'massnahme-gift-cards'); ?>');
+            },
+            complete: function() {
+                $('#mgc-redemption-lookup').prop('disabled', false).text('<?php _e('Look Up', 'massnahme-gift-cards'); ?>');
+            }
+        });
+    }
+
+    // Display card info for redemption
+    function displayRedemptionCard(card) {
+        currentRedemptionCard = card;
+        currentRedemptionBalance = parseFloat(card.balance);
+
+        $('#mgc-redemption-error').hide();
+        $('#mgc-redemption-card-display').show();
+
+        // Status banner
+        var banner = $('#mgc-redemption-status-banner');
+        banner.removeClass('status-active status-used status-expired').addClass('status-' + card.status);
+
+        var statusText = {
+            'active': '<?php _e('VALID', 'massnahme-gift-cards'); ?>',
+            'used': '<?php _e('FULLY USED', 'massnahme-gift-cards'); ?>',
+            'expired': '<?php _e('EXPIRED', 'massnahme-gift-cards'); ?>'
+        };
+        var statusIcon = { 'active': '✓', 'used': '✗', 'expired': '!' };
+
+        banner.find('.mgc-fd-status-icon').text(statusIcon[card.status] || '?');
+        banner.find('.mgc-fd-status-text').text(statusText[card.status] || card.status.toUpperCase());
+
+        // Card details
+        $('#mgc-redemption-balance').html(formatCurrency(card.balance));
+        $('#mgc-redemption-card-code').text(card.code);
+        $('#mgc-redemption-original').html(formatCurrency(card.amount));
+        $('#mgc-redemption-recipient').text(card.recipient_name || card.recipient_email || '-');
+        $('#mgc-redemption-expires').text(card.expires_at || '-');
+
+        // Show/hide redemption section
+        if (card.status === 'active' && currentRedemptionBalance > 0) {
+            $('#mgc-redemption-amount-section').show();
+            $('#mgc-redemption-amount').attr('max', currentRedemptionBalance);
+        } else {
+            $('#mgc-redemption-amount-section').hide();
+        }
+
+        // Reset redemption form
+        $('#mgc-redemption-amount').val('');
+        $('#mgc-redemption-preview').hide();
+        $('#mgc-redemption-confirm').prop('disabled', true);
+        $('.mgc-fd-quick-amt').removeClass('selected');
+
+        // Load transaction history
+        loadRedemptionHistory(card);
+    }
+
+    // Load transaction history for the card
+    function loadRedemptionHistory(card) {
+        $('#mgc-redemption-history-loading').show();
+        $('#mgc-redemption-history-table').hide();
+        $('#mgc-redemption-no-history').hide();
+
+        if (card.history && card.history.length > 0) {
+            var $tbody = $('#mgc-redemption-history-tbody');
+            $tbody.empty();
+
+            $.each(card.history, function(i, item) {
+                var typeLabel = getTransactionTypeLabel(item.type || 'adjustment');
+                var userIdDisplay = item.updated_by ? '<span class="mgc-fd-user-id">#' + item.updated_by + '</span>' : '-';
+                var userNameDisplay = item.updated_by_name || '-';
+                $tbody.append(
+                    '<tr>' +
+                    '<td>' + item.date + '</td>' +
+                    '<td><span class="mgc-fd-tx-type mgc-fd-tx-type-' + (item.type || 'adjustment') + '">' + typeLabel + '</span></td>' +
+                    '<td style="color: #dc3545; font-weight: 600;">-' + formatCurrency(Math.abs(item.amount)) + '</td>' +
+                    '<td>' + formatCurrency(item.remaining) + '</td>' +
+                    '<td>' + userIdDisplay + '</td>' +
+                    '<td>' + escapeHtml(userNameDisplay) + '</td>' +
+                    '</tr>'
+                );
+            });
+
+            $('#mgc-redemption-history-loading').hide();
+            $('#mgc-redemption-history-table').show();
+        } else {
+            $('#mgc-redemption-history-loading').hide();
+            $('#mgc-redemption-no-history').show();
+        }
+    }
+
+    // Show error for redemption
+    function showRedemptionError(message) {
+        $('#mgc-redemption-card-display').hide();
+        $('#mgc-redemption-error').show();
+        $('#mgc-redemption-error-message').text(message);
+    }
+
+    // Clear redemption form
+    function clearRedemption() {
+        currentRedemptionCard = null;
+        currentRedemptionBalance = 0;
+        $('#mgc-redemption-code').val('').focus();
+        $('#mgc-redemption-card-display').hide();
+        $('#mgc-redemption-error').hide();
+    }
+
+    // Update redemption preview
+    function updateRedemptionPreview() {
+        var amount = parseFloat($('#mgc-redemption-amount').val()) || 0;
+
+        if (amount > 0 && amount <= currentRedemptionBalance) {
+            var remaining = currentRedemptionBalance - amount;
+            $('#mgc-preview-current').html(formatCurrency(currentRedemptionBalance));
+            $('#mgc-preview-deduct').html('-' + formatCurrency(amount));
+            $('#mgc-preview-remaining').html(formatCurrency(remaining));
+            $('#mgc-redemption-preview').show();
+            $('#mgc-redemption-confirm').prop('disabled', false);
+        } else {
+            $('#mgc-redemption-preview').hide();
+            $('#mgc-redemption-confirm').prop('disabled', true);
+        }
+    }
+
+    // Confirm redemption
+    function confirmRedemption() {
+        var amount = parseFloat($('#mgc-redemption-amount').val());
+
+        if (!amount || amount <= 0 || amount > currentRedemptionBalance) {
+            alert('<?php _e('Invalid amount', 'massnahme-gift-cards'); ?>');
+            return;
+        }
+
+        $('#mgc-redemption-confirm').prop('disabled', true).text('<?php _e('Processing...', 'massnahme-gift-cards'); ?>');
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'mgc_frontend_redeem',
+                nonce: nonce,
+                code: currentRedemptionCard.code,
+                amount: amount
+            },
+            success: function(response) {
+                if (response.success) {
+                    showRedemptionSuccess(amount, response.data.new_balance);
+                } else {
+                    alert('<?php _e('Error:', 'massnahme-gift-cards'); ?> ' + response.data);
+                }
+            },
+            error: function() {
+                alert('<?php _e('Connection error. Please try again.', 'massnahme-gift-cards'); ?>');
+            },
+            complete: function() {
+                $('#mgc-redemption-confirm').prop('disabled', false).text('<?php _e('Confirm Redemption', 'massnahme-gift-cards'); ?>');
+            }
+        });
+    }
+
+    // Show success overlay
+    function showRedemptionSuccess(amount, remaining) {
+        $('#mgc-redemption-success-amount').html('-' + formatCurrency(amount));
+        $('#mgc-redemption-success-remaining').html('<?php _e('Remaining balance:', 'massnahme-gift-cards'); ?> ' + formatCurrency(remaining));
+        $('#mgc-redemption-success').show();
+    }
+
+    // Event handlers for redemption section
+    $('#mgc-redemption-lookup').on('click', lookupRedemptionCard);
+    $('#mgc-redemption-code').on('keypress', function(e) {
+        if (e.which === 13) lookupRedemptionCard();
+    });
+
+    $('#mgc-redemption-clear, #mgc-redemption-retry').on('click', clearRedemption);
+
+    $('#mgc-redemption-amount').on('input', function() {
+        $('.mgc-fd-quick-amt').removeClass('selected');
+        updateRedemptionPreview();
+    });
+
+    $('.mgc-fd-quick-amt').on('click', function() {
+        var amount = $(this).data('amount');
+        $('.mgc-fd-quick-amt').removeClass('selected');
+        $(this).addClass('selected');
+        $('#mgc-redemption-amount').val(amount === 'full' ? currentRedemptionBalance : amount);
+        updateRedemptionPreview();
+    });
+
+    $('#mgc-redemption-confirm').on('click', confirmRedemption);
+
+    $('#mgc-redemption-success-close').on('click', function() {
+        $('#mgc-redemption-success').hide();
+        clearRedemption();
     });
 
 })(jQuery);
