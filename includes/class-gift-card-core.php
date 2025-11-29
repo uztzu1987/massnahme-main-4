@@ -998,10 +998,122 @@ class MGC_Core {
     public function admin_dashboard_shortcode($atts) {
         // Check if user is logged in and has permission
         if (!is_user_logged_in()) {
-            return '<div class="mgc-admin-login-required">' .
-                   '<p>' . __('Please log in to access the admin dashboard.', 'massnahme-gift-cards') . '</p>' .
-                   '<a href="' . esc_url(wp_login_url(get_permalink())) . '" class="button">' . __('Log In', 'massnahme-gift-cards') . '</a>' .
-                   '</div>';
+            ob_start();
+            ?>
+            <div class="mgc-frontend-login">
+                <div class="mgc-login-container">
+                    <h2><?php _e('Gift Card Management', 'massnahme-gift-cards'); ?></h2>
+                    <p class="mgc-login-message"><?php _e('Please log in to access the admin dashboard.', 'massnahme-gift-cards'); ?></p>
+                    <?php
+                    wp_login_form([
+                        'redirect' => get_permalink(),
+                        'form_id' => 'mgc-login-form',
+                        'label_username' => __('Username or Email', 'massnahme-gift-cards'),
+                        'label_password' => __('Password', 'massnahme-gift-cards'),
+                        'label_remember' => __('Remember Me', 'massnahme-gift-cards'),
+                        'label_log_in' => __('Log In', 'massnahme-gift-cards'),
+                        'remember' => true,
+                    ]);
+                    ?>
+                    <?php if (get_option('users_can_register')) : ?>
+                    <p class="mgc-login-register">
+                        <?php _e('Don\'t have an account?', 'massnahme-gift-cards'); ?>
+                        <a href="<?php echo esc_url(wp_registration_url()); ?>"><?php _e('Register', 'massnahme-gift-cards'); ?></a>
+                    </p>
+                    <?php endif; ?>
+                    <p class="mgc-login-lost-password">
+                        <a href="<?php echo esc_url(wp_lostpassword_url(get_permalink())); ?>"><?php _e('Lost your password?', 'massnahme-gift-cards'); ?></a>
+                    </p>
+                </div>
+                <style>
+                    .mgc-frontend-login {
+                        max-width: 400px;
+                        margin: 40px auto;
+                        padding: 30px;
+                        background: #fff;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    }
+                    .mgc-login-container h2 {
+                        margin: 0 0 10px 0;
+                        font-size: 24px;
+                        color: #1a1a1a;
+                        text-align: center;
+                    }
+                    .mgc-login-message {
+                        text-align: center;
+                        color: #666;
+                        margin-bottom: 25px;
+                    }
+                    #mgc-login-form {
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    #mgc-login-form label {
+                        display: block;
+                        margin-bottom: 5px;
+                        font-weight: 600;
+                        color: #333;
+                    }
+                    #mgc-login-form input[type="text"],
+                    #mgc-login-form input[type="password"] {
+                        width: 100%;
+                        padding: 12px 15px;
+                        border: 2px solid #ddd;
+                        border-radius: 8px;
+                        font-size: 15px;
+                        margin-bottom: 15px;
+                        box-sizing: border-box;
+                    }
+                    #mgc-login-form input[type="text"]:focus,
+                    #mgc-login-form input[type="password"]:focus {
+                        border-color: #2271b1;
+                        outline: none;
+                    }
+                    #mgc-login-form .login-remember {
+                        margin-bottom: 15px;
+                    }
+                    #mgc-login-form .login-remember label {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-weight: normal;
+                    }
+                    #mgc-login-form input[type="submit"] {
+                        background: #2271b1;
+                        color: #fff;
+                        border: none;
+                        padding: 14px 24px;
+                        border-radius: 8px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    }
+                    #mgc-login-form input[type="submit"]:hover {
+                        background: #135e96;
+                    }
+                    .mgc-login-register,
+                    .mgc-login-lost-password {
+                        text-align: center;
+                        margin-top: 15px;
+                        font-size: 14px;
+                        color: #666;
+                    }
+                    .mgc-login-register a,
+                    .mgc-login-lost-password a {
+                        color: #2271b1;
+                        text-decoration: none;
+                    }
+                    .mgc-login-register a:hover,
+                    .mgc-login-lost-password a:hover {
+                        text-decoration: underline;
+                    }
+                </style>
+            </div>
+            <?php
+            return ob_get_clean();
         }
 
         if (!current_user_can('manage_woocommerce')) {
