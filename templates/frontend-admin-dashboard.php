@@ -25,15 +25,21 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         <span class="mgc-fd-user"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
     </div>
 
-    <!-- COMMENTED OUT: Tab Navigation - Simplified to show only Redemption -->
-    <!--
+    <!-- Tab Navigation -->
     <div class="mgc-fd-tabs">
-        <button class="mgc-fd-tab active" data-tab="overview"><?php _e('Overview', 'massnahme-gift-cards'); ?></button>
-        <button class="mgc-fd-tab" data-tab="all-cards"><?php _e('All Gift Cards', 'massnahme-gift-cards'); ?></button>
-        <button class="mgc-fd-tab" data-tab="transactions"><?php _e('Transaction History', 'massnahme-gift-cards'); ?></button>
-        <button class="mgc-fd-tab" data-tab="create"><?php _e('Create Gift Card', 'massnahme-gift-cards'); ?></button>
+        <button class="mgc-fd-tab" data-tab="create">
+            <span class="mgc-fd-tab-icon">&#10010;</span>
+            <?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>
+        </button>
+        <button class="mgc-fd-tab" data-tab="view">
+            <span class="mgc-fd-tab-icon">&#128269;</span>
+            <?php _e('View Gift Card', 'massnahme-gift-cards'); ?>
+        </button>
+        <button class="mgc-fd-tab active" data-tab="redeem">
+            <span class="mgc-fd-tab-icon">&#128176;</span>
+            <?php _e('Redeem Gift Card', 'massnahme-gift-cards'); ?>
+        </button>
     </div>
-    -->
 
     <!-- COMMENTED OUT: Overview Tab -->
     <!--
@@ -129,11 +135,195 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     -->
 
     <!-- ============================================ -->
-    <!-- GIFT CARD REDEMPTION - Main Active Section -->
+    <!-- CREATE GIFT CARD TAB -->
     <!-- ============================================ -->
+    <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-create">
+        <div class="mgc-fd-create-form">
+            <h3><?php _e('Create New Gift Card', 'massnahme-gift-cards'); ?></h3>
 
-    <!-- Code Entry Section -->
-    <div class="mgc-fd-redemption-section">
+            <div class="mgc-fd-form-notice" id="mgc-fd-create-notice" style="display: none;"></div>
+
+            <form id="mgc-fd-create-form">
+                <!-- Card Type Toggle -->
+                <div class="mgc-fd-card-type-toggle">
+                    <label class="mgc-fd-toggle-option">
+                        <input type="radio" name="card_type" value="digital" checked>
+                        <span class="mgc-fd-toggle-label">
+                            <span class="mgc-fd-toggle-icon">&#128231;</span>
+                            <?php _e('Digital Card', 'massnahme-gift-cards'); ?>
+                        </span>
+                    </label>
+                    <label class="mgc-fd-toggle-option">
+                        <input type="radio" name="card_type" value="physical">
+                        <span class="mgc-fd-toggle-label">
+                            <span class="mgc-fd-toggle-icon">&#127873;</span>
+                            <?php _e('Physical Card', 'massnahme-gift-cards'); ?>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- Amount -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-amount"><?php _e('Amount', 'massnahme-gift-cards'); ?> *</label>
+                    <div class="mgc-fd-amount-input">
+                        <span class="mgc-fd-currency"><?php echo esc_html($currency_symbol); ?></span>
+                        <input type="number" id="mgc-create-amount" name="amount" step="0.01" min="1" required>
+                    </div>
+                    <div class="mgc-fd-quick-amounts">
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="50"><?php echo esc_html($currency_symbol); ?>50</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="100"><?php echo esc_html($currency_symbol); ?>100</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="200"><?php echo esc_html($currency_symbol); ?>200</button>
+                        <button type="button" class="mgc-fd-quick-amount" data-amount="500"><?php echo esc_html($currency_symbol); ?>500</button>
+                    </div>
+                </div>
+
+                <!-- Custom Code (shown for physical cards) -->
+                <div class="mgc-fd-form-group mgc-fd-physical-only" style="display: none;">
+                    <label for="mgc-create-code">
+                        <?php _e('Card Code', 'massnahme-gift-cards'); ?>
+                        <span class="mgc-fd-label-hint"><?php _e('(printed on physical card)', 'massnahme-gift-cards'); ?></span>
+                    </label>
+                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('e.g., PHYS-2025-ABC123', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
+                    <p class="mgc-fd-field-hint"><?php _e('Enter the code printed on the physical card. Use letters, numbers, and dashes only.', 'massnahme-gift-cards'); ?></p>
+                </div>
+
+                <!-- Auto-generate notice (shown for digital cards) -->
+                <div class="mgc-fd-form-group mgc-fd-digital-only">
+                    <div class="mgc-fd-info-box">
+                        <span class="mgc-fd-info-icon">&#9432;</span>
+                        <?php _e('A unique code will be automatically generated for this digital gift card.', 'massnahme-gift-cards'); ?>
+                    </div>
+                </div>
+
+                <!-- Recipient Name -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-recipient-name"><?php _e('Recipient Name', 'massnahme-gift-cards'); ?></label>
+                    <input type="text" id="mgc-create-recipient-name" name="recipient_name" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
+                </div>
+
+                <!-- Recipient Email -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-recipient-email"><?php _e('Recipient Email', 'massnahme-gift-cards'); ?></label>
+                    <input type="email" id="mgc-create-recipient-email" name="recipient_email" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
+                </div>
+
+                <!-- Message -->
+                <div class="mgc-fd-form-group">
+                    <label for="mgc-create-message"><?php _e('Personal Message', 'massnahme-gift-cards'); ?></label>
+                    <textarea id="mgc-create-message" name="message" rows="3" placeholder="<?php esc_attr_e('Optional personal message', 'massnahme-gift-cards'); ?>"></textarea>
+                </div>
+
+                <button type="submit" class="mgc-fd-btn mgc-fd-btn-primary mgc-fd-btn-large" id="mgc-fd-create-btn">
+                    <?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- VIEW GIFT CARD TAB -->
+    <!-- ============================================ -->
+    <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-view">
+        <div class="mgc-fd-redemption-section">
+            <!-- Code Entry Section -->
+            <div class="mgc-fd-code-entry">
+                <div class="mgc-fd-input-group">
+                    <input type="text"
+                           id="mgc-view-code"
+                           class="mgc-fd-code-input"
+                           placeholder="<?php esc_attr_e('Enter gift card code...', 'massnahme-gift-cards'); ?>"
+                           autocomplete="off">
+                    <button type="button" id="mgc-view-lookup" class="mgc-fd-btn mgc-fd-btn-primary">
+                        <?php _e('Look Up', 'massnahme-gift-cards'); ?>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card Display (hidden until lookup) -->
+            <div id="mgc-view-card-display" style="display: none;">
+                <!-- Status Banner -->
+                <div id="mgc-view-status-banner" class="mgc-fd-status-banner">
+                    <span class="mgc-fd-status-icon"></span>
+                    <span class="mgc-fd-status-text"></span>
+                </div>
+
+                <!-- Balance Display -->
+                <div class="mgc-fd-balance-box">
+                    <span class="mgc-fd-balance-label"><?php _e('Available Balance', 'massnahme-gift-cards'); ?></span>
+                    <span id="mgc-view-balance" class="mgc-fd-balance-value"></span>
+                </div>
+
+                <!-- Card Info Grid -->
+                <div class="mgc-fd-card-info-grid">
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Code', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-card-code" class="mgc-fd-info-value mgc-fd-code"></span>
+                    </div>
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Original Amount', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-original" class="mgc-fd-info-value"></span>
+                    </div>
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Recipient', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-recipient" class="mgc-fd-info-value"></span>
+                    </div>
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Expires', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-expires" class="mgc-fd-info-value"></span>
+                    </div>
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Type', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-type" class="mgc-fd-info-value"></span>
+                    </div>
+                    <div class="mgc-fd-info-item">
+                        <span class="mgc-fd-info-label"><?php _e('Created', 'massnahme-gift-cards'); ?></span>
+                        <span id="mgc-view-created" class="mgc-fd-info-value"></span>
+                    </div>
+                </div>
+
+                <!-- Transaction History for this card -->
+                <div class="mgc-fd-card-transactions">
+                    <h4><?php _e('Transaction History', 'massnahme-gift-cards'); ?></h4>
+                    <div id="mgc-view-history-loading" class="mgc-fd-loading"><?php _e('Loading...', 'massnahme-gift-cards'); ?></div>
+                    <table class="mgc-fd-table mgc-fd-history-table" id="mgc-view-history-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
+                                <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
+                                <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
+                                <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
+                                <th><?php _e('User ID', 'massnahme-gift-cards'); ?></th>
+                                <th><?php _e('User Name', 'massnahme-gift-cards'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody id="mgc-view-history-tbody"></tbody>
+                    </table>
+                    <p id="mgc-view-no-history" style="display: none;"><?php _e('No transactions yet.', 'massnahme-gift-cards'); ?></p>
+                </div>
+
+                <!-- Clear Button -->
+                <button type="button" id="mgc-view-clear" class="mgc-fd-btn mgc-fd-btn-secondary mgc-fd-btn-large">
+                    <?php _e('Clear / New Lookup', 'massnahme-gift-cards'); ?>
+                </button>
+            </div>
+
+            <!-- Error Display -->
+            <div id="mgc-view-error" class="mgc-fd-error-display" style="display: none;">
+                <div class="mgc-fd-error-icon">!</div>
+                <div id="mgc-view-error-message" class="mgc-fd-error-text"></div>
+                <button type="button" id="mgc-view-retry" class="mgc-fd-btn mgc-fd-btn-secondary">
+                    <?php _e('Try Again', 'massnahme-gift-cards'); ?>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- REDEEM GIFT CARD TAB -->
+    <!-- ============================================ -->
+    <div class="mgc-fd-content mgc-fd-tab-content active" id="mgc-tab-redeem">
+        <!-- Code Entry Section -->
+        <div class="mgc-fd-redemption-section">
         <div class="mgc-fd-code-entry">
             <div class="mgc-fd-input-group">
                 <input type="text"
@@ -272,6 +462,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             </button>
         </div>
     </div>
+    </div><!-- End Redeem Tab -->
 
     <!-- COMMENTED OUT: Transaction History Tab (standalone - now integrated above) -->
     <!--
@@ -476,8 +667,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     </div>
     -->
 
-    <!-- COMMENTED OUT: Success Modal (old tabbed interface) -->
-    <!--
+    <!-- Success Modal for Create Gift Card -->
     <div id="mgc-fd-success-modal" class="mgc-fd-modal" style="display: none;">
         <div class="mgc-fd-modal-content mgc-fd-success-content">
             <div class="mgc-fd-success-icon">&#10003;</div>
@@ -489,7 +679,6 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             <button type="button" class="mgc-fd-btn mgc-fd-btn-primary" id="mgc-fd-success-close"><?php _e('Done', 'massnahme-gift-cards'); ?></button>
         </div>
     </div>
-    -->
 </div>
 
 <style>
@@ -528,17 +717,20 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 /* Tabs */
 .mgc-fd-tabs {
     display: flex;
-    gap: 5px;
-    margin-bottom: 20px;
+    gap: 0;
+    margin-bottom: 25px;
     border-bottom: 2px solid #eee;
     padding-bottom: 0;
 }
 
 .mgc-fd-tab {
-    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 15px 28px;
     border: none;
     background: none;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: #666;
     cursor: pointer;
@@ -549,11 +741,17 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
 .mgc-fd-tab:hover {
     color: #1a1a1a;
+    background: #f8f9fa;
 }
 
 .mgc-fd-tab.active {
-    color: #2271b1;
-    border-bottom-color: #2271b1;
+    color: #e65100;
+    border-bottom-color: #e65100;
+    background: #fff9f5;
+}
+
+.mgc-fd-tab-icon {
+    font-size: 18px;
 }
 
 /* Tab Content */
@@ -1488,8 +1686,13 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
     .mgc-fd-tab {
         flex: 1;
-        text-align: center;
-        padding: 10px 15px;
+        justify-content: center;
+        padding: 12px 10px;
+        font-size: 13px;
+    }
+
+    .mgc-fd-tab-icon {
+        font-size: 16px;
     }
 
     .mgc-fd-stats {
@@ -2146,6 +2349,132 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         $('#mgc-redemption-success').hide();
         clearRedemption();
     });
+
+    // ============================================
+    // VIEW GIFT CARD SECTION
+    // ============================================
+
+    // Lookup gift card for viewing only
+    function lookupViewCard() {
+        var code = $('#mgc-view-code').val().trim().toUpperCase();
+        if (!code) {
+            showViewError('<?php _e('Please enter a gift card code', 'massnahme-gift-cards'); ?>');
+            return;
+        }
+
+        $('#mgc-view-lookup').prop('disabled', true).text('<?php _e('Looking up...', 'massnahme-gift-cards'); ?>');
+
+        $.ajax({
+            url: ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'mgc_frontend_staff_lookup',
+                nonce: nonce,
+                code: code
+            },
+            success: function(response) {
+                if (response.success) {
+                    displayViewCard(response.data);
+                } else {
+                    showViewError(response.data || '<?php _e('Gift card not found', 'massnahme-gift-cards'); ?>');
+                }
+            },
+            error: function() {
+                showViewError('<?php _e('Connection error. Please try again.', 'massnahme-gift-cards'); ?>');
+            },
+            complete: function() {
+                $('#mgc-view-lookup').prop('disabled', false).text('<?php _e('Look Up', 'massnahme-gift-cards'); ?>');
+            }
+        });
+    }
+
+    // Display card info for viewing
+    function displayViewCard(card) {
+        $('#mgc-view-error').hide();
+        $('#mgc-view-card-display').show();
+
+        // Status banner
+        var banner = $('#mgc-view-status-banner');
+        banner.removeClass('status-active status-used status-expired').addClass('status-' + card.status);
+
+        var statusText = {
+            'active': '<?php _e('VALID', 'massnahme-gift-cards'); ?>',
+            'used': '<?php _e('FULLY USED', 'massnahme-gift-cards'); ?>',
+            'expired': '<?php _e('EXPIRED', 'massnahme-gift-cards'); ?>'
+        };
+        var statusIcon = { 'active': '✓', 'used': '✗', 'expired': '!' };
+
+        banner.find('.mgc-fd-status-icon').text(statusIcon[card.status] || '?');
+        banner.find('.mgc-fd-status-text').text(statusText[card.status] || card.status.toUpperCase());
+
+        // Card details
+        $('#mgc-view-balance').html(formatCurrency(card.balance));
+        $('#mgc-view-card-code').text(card.code);
+        $('#mgc-view-original').html(formatCurrency(card.amount));
+        $('#mgc-view-recipient').text(card.recipient_name || card.recipient_email || '-');
+        $('#mgc-view-expires').text(card.expires_at || '-');
+        $('#mgc-view-type').text(card.delivery_method ? card.delivery_method.charAt(0).toUpperCase() + card.delivery_method.slice(1) : 'Digital');
+        $('#mgc-view-created').text(card.created_at || '-');
+
+        // Load transaction history
+        loadViewHistory(card);
+    }
+
+    // Load transaction history for the view card
+    function loadViewHistory(card) {
+        $('#mgc-view-history-loading').show();
+        $('#mgc-view-history-table').hide();
+        $('#mgc-view-no-history').hide();
+
+        if (card.history && card.history.length > 0) {
+            var $tbody = $('#mgc-view-history-tbody');
+            $tbody.empty();
+
+            $.each(card.history, function(i, item) {
+                var typeLabel = getTransactionTypeLabel(item.type || 'adjustment');
+                var userIdDisplay = item.updated_by ? '<span class="mgc-fd-user-id">#' + item.updated_by + '</span>' : '-';
+                var userNameDisplay = item.updated_by_name || '-';
+                $tbody.append(
+                    '<tr>' +
+                    '<td>' + item.date + '</td>' +
+                    '<td><span class="mgc-fd-tx-type mgc-fd-tx-type-' + (item.type || 'adjustment') + '">' + typeLabel + '</span></td>' +
+                    '<td style="color: #dc3545; font-weight: 600;">-' + formatCurrency(Math.abs(item.amount)) + '</td>' +
+                    '<td>' + formatCurrency(item.remaining) + '</td>' +
+                    '<td>' + userIdDisplay + '</td>' +
+                    '<td>' + escapeHtml(userNameDisplay) + '</td>' +
+                    '</tr>'
+                );
+            });
+
+            $('#mgc-view-history-loading').hide();
+            $('#mgc-view-history-table').show();
+        } else {
+            $('#mgc-view-history-loading').hide();
+            $('#mgc-view-no-history').show();
+        }
+    }
+
+    // Show error for view
+    function showViewError(message) {
+        $('#mgc-view-card-display').hide();
+        $('#mgc-view-error').show();
+        $('#mgc-view-error-message').text(message);
+    }
+
+    // Clear view form
+    function clearView() {
+        $('#mgc-view-code').val('').focus();
+        $('#mgc-view-card-display').hide();
+        $('#mgc-view-error').hide();
+    }
+
+    // Event handlers for view section
+    $('#mgc-view-lookup').on('click', lookupViewCard);
+    $('#mgc-view-code').on('keypress', function(e) {
+        if (e.which === 13) lookupViewCard();
+    });
+
+    $('#mgc-view-clear, #mgc-view-retry').on('click', clearView);
 
 })(jQuery);
 </script>
