@@ -103,13 +103,14 @@ class MGC_Email {
         ];
         
         // Send to recipient
-        $sent = wp_mail(
-            $recipient_email,
-            $this->get_email_subject('gift-card', $email_data),
-            $email_content,
-            $headers,
-            $this->get_attachments($gift_card)
-        );
+        // Email sending disabled
+        $sent = true; // wp_mail(
+        //     $recipient_email,
+        //     $this->get_email_subject('gift-card', $email_data),
+        //     $email_content,
+        //     $headers,
+        //     $this->get_attachments($gift_card)
+        // );
         
         // Send copy to purchaser if different
         if ($recipient_email !== $purchaser_email) {
@@ -147,12 +148,13 @@ class MGC_Email {
             'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
         ];
         
-        wp_mail(
-            $gift_card->purchaser_email,
-            $this->get_email_subject('purchase-confirmation', $email_data),
-            $email_content,
-            $headers
-        );
+        // Email sending disabled
+        // wp_mail(
+        //     $gift_card->purchaser_email,
+        //     $this->get_email_subject('purchase-confirmation', $email_data),
+        //     $email_content,
+        //     $headers
+        // );
     }
     
     /**
@@ -283,20 +285,21 @@ class MGC_Email {
             'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
         ];
 
-        $sent = wp_mail(
-            $store_email,
-            $this->get_email_subject('store-pickup-notification', $email_data),
-            $email_content,
-            $headers
-        );
+        // Email sending disabled
+        $sent = true; // wp_mail(
+        //     $store_email,
+        //     $this->get_email_subject('store-pickup-notification', $email_data),
+        //     $email_content,
+        //     $headers
+        // );
 
-        if ($sent) {
-            $order->add_order_note(sprintf(
-                __('Store pickup notification sent to %s for gift card %s', 'massnahme-gift-cards'),
-                $store_email,
-                $code
-            ));
-        }
+        // if ($sent) {
+        //     $order->add_order_note(sprintf(
+        //         __('Store pickup notification sent to %s for gift card %s', 'massnahme-gift-cards'),
+        //         $store_email,
+        //         $code
+        //     ));
+        // }
 
         return $sent;
     }
@@ -339,12 +342,13 @@ class MGC_Email {
             'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
         ];
 
-        return wp_mail(
-            $gift_card->purchaser_email,
-            $this->get_email_subject('pickup-confirmation', $email_data),
-            $email_content,
-            $headers
-        );
+        // Email sending disabled
+        return true; // wp_mail(
+        //     $gift_card->purchaser_email,
+        //     $this->get_email_subject('pickup-confirmation', $email_data),
+        //     $email_content,
+        //     $headers
+        // );
     }
 
     /**
@@ -383,12 +387,13 @@ class MGC_Email {
             'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
         ];
 
-        return wp_mail(
-            $gift_card->purchaser_email,
-            $this->get_email_subject('shipping-confirmation', $email_data),
-            $email_content,
-            $headers
-        );
+        // Email sending disabled
+        return true; // wp_mail(
+        //     $gift_card->purchaser_email,
+        //     $this->get_email_subject('shipping-confirmation', $email_data),
+        //     $email_content,
+        //     $headers
+        // );
     }
 
     /**
@@ -435,25 +440,28 @@ class MGC_Email {
         $sent_to_staff = false;
         $sent_to_customer = false;
 
+        // Email sending disabled
         // Send to staff member who created the card
-        if (!empty($created_by_email)) {
-            $sent_to_staff = wp_mail(
-                $created_by_email,
-                $subject,
-                $email_content,
-                $headers
-            );
-        }
+        // if (!empty($created_by_email)) {
+        //     $sent_to_staff = wp_mail(
+        //         $created_by_email,
+        //         $subject,
+        //         $email_content,
+        //         $headers
+        //     );
+        // }
 
         // Send to customer/recipient if email provided
-        if (!empty($recipient_email) && $recipient_email !== $created_by_email) {
-            $sent_to_customer = wp_mail(
-                $recipient_email,
-                $subject,
-                $email_content,
-                $headers
-            );
-        }
+        // if (!empty($recipient_email) && $recipient_email !== $created_by_email) {
+        //     $sent_to_customer = wp_mail(
+        //         $recipient_email,
+        //         $subject,
+        //         $email_content,
+        //         $headers
+        //     );
+        // }
+        $sent_to_staff = true;
+        $sent_to_customer = true;
 
         return $sent_to_staff || $sent_to_customer;
     }
