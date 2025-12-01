@@ -87,7 +87,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                 <!-- Custom Code (shown for physical cards) -->
                 <div class="mgc-fd-form-group mgc-fd-physical-only" style="display: none;">
                     <label for="mgc-create-code">
-                        <?php _e('Card Code', 'massnahme-gift-cards'); ?>
+                        <?php _e('Card Code', 'massnahme-gift-cards'); ?> *
                         <span class="mgc-fd-label-hint"><?php _e('(printed on physical card)', 'massnahme-gift-cards'); ?></span>
                     </label>
                     <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('e.g., PHYS-2025-ABC123', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
@@ -1496,9 +1496,11 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         if ($(this).val() === 'physical') {
             $('.mgc-fd-physical-only').show();
             $('.mgc-fd-digital-only').hide();
+            $('#mgc-create-code').prop('required', true);
         } else {
             $('.mgc-fd-physical-only').hide();
             $('.mgc-fd-digital-only').show();
+            $('#mgc-create-code').prop('required', false);
         }
     });
 
@@ -1514,6 +1516,16 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         var $btn = $('#mgc-fd-create-btn');
         var $notice = $('#mgc-fd-create-notice');
         var isPhysical = $('input[name="card_type"]:checked').val() === 'physical';
+
+        // Validate card code for physical cards
+        if (isPhysical) {
+            var customCode = $('#mgc-create-code').val().trim();
+            if (!customCode) {
+                $notice.removeClass('success').addClass('error').text('<?php _e('Please enter the card code for the physical gift card.', 'massnahme-gift-cards'); ?>').show();
+                $('#mgc-create-code').focus();
+                return;
+            }
+        }
 
         $btn.prop('disabled', true).text('<?php _e('Creating...', 'massnahme-gift-cards'); ?>');
         $notice.hide();
