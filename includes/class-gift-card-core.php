@@ -698,8 +698,8 @@ class MGC_Core {
             ?>
             <div class="mgc-staff-login">
                 <div class="mgc-staff-login-container">
-                    <h2><?php _e('Staff Login', 'massnahme-gift-cards'); ?></h2>
-                    <p class="mgc-staff-login-message"><?php _e('Please log in to access the gift card redemption system.', 'massnahme-gift-cards'); ?></p>
+                    <h2><?php _e('Gift Card Management', 'massnahme-gift-cards'); ?></h2>
+                    <p class="mgc-staff-login-message"><?php _e('Please log in to access the admin dashboard.', 'massnahme-gift-cards'); ?></p>
                     <?php
                     wp_login_form([
                         'redirect' => get_permalink(),
