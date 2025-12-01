@@ -57,6 +57,10 @@ class MGC_Core {
         add_action('wp_ajax_mgc_frontend_list_cards', [$this, 'ajax_frontend_list_cards']);
         add_action('wp_ajax_mgc_frontend_list_transactions', [$this, 'ajax_frontend_list_transactions']);
 
+        // Login state check AJAX handler (works for both logged-in and non-logged-in)
+        add_action('wp_ajax_mgc_check_login_state', [$this, 'ajax_check_login_state']);
+        add_action('wp_ajax_nopriv_mgc_check_login_state', [$this, 'ajax_check_login_state']);
+
         // Add shipping fee for gift card delivery
         add_action('woocommerce_cart_calculate_fees', [$this, 'add_gift_card_shipping_fee']);
 
@@ -682,26 +686,117 @@ class MGC_Core {
      * Staff redemption shortcode for frontend POS
      */
     public function staff_redemption_shortcode($atts) {
+        // Prevent browser caching of this page to ensure fresh login state
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Cache-Control: post-check=0, pre-check=0', false);
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        }
+
+        // Generate a unique page load token for cache detection
+        $page_load_token = wp_create_nonce('mgc_page_load_' . time());
+
         // Check if user is logged in and has permission
         if (!is_user_logged_in()) {
+            // Build return URL with cache-busting parameter
+            $current_url = home_url(add_query_arg(array()));
+            // Remove any existing mgc_t parameter
+            $current_url = remove_query_arg('mgc_t', $current_url);
+            // Add fresh cache-bust parameter
+            $current_url = add_query_arg('mgc_t', time(), $current_url);
+            $login_url = wp_login_url($current_url);
+
+            // Return login prompt with JavaScript to handle back/forward navigation
             return '<div class="mgc-staff-login-required">' .
                    '<p>' . __('Please log in to access the staff redemption system.', 'massnahme-gift-cards') . '</p>' .
-                   '<a href="' . esc_url(wp_login_url(get_permalink())) . '" class="button">' . __('Log In', 'massnahme-gift-cards') . '</a>' .
-                   '</div>';
+                   '<a href="' . esc_url($login_url) . '" class="button mgc-login-btn">' . __('Log In', 'massnahme-gift-cards') . '</a>' .
+                   '</div>' .
+                   '<script>
+                   (function() {
+                       // Handle browser back/forward cache (bfcache)
+                       window.addEventListener("pageshow", function(event) {
+                           if (event.persisted) {
+                               // Page was loaded from bfcache, force reload
+                               window.location.reload();
+                           }
+                       });
+                       // Also check on visibilitychange (tab switching)
+                       document.addEventListener("visibilitychange", function() {
+                           if (document.visibilityState === "visible") {
+                               // Verify we are still in correct state via a quick check
+                               fetch("' . esc_url(admin_url('admin-ajax.php')) . '?action=mgc_check_login_state&_=" + Date.now())
+                               .then(function(r) { return r.json(); })
+                               .then(function(data) {
+                                   if (data.logged_in) {
+                                       window.location.reload();
+                                   }
+                               })
+                               .catch(function() {});
+                           }
+                       });
+                   })();
+                   </script>';
         }
 
         if (!current_user_can('manage_woocommerce')) {
             return '<div class="mgc-staff-no-permission">' .
                    '<p>' . __('You do not have permission to access this page.', 'massnahme-gift-cards') . '</p>' .
-                   '</div>';
+                   '</div>' .
+                   '<script>
+                   (function() {
+                       // Handle browser back/forward cache (bfcache)
+                       window.addEventListener("pageshow", function(event) {
+                           if (event.persisted) {
+                               window.location.reload();
+                           }
+                       });
+                       // Check on visibility change (tab switching)
+                       document.addEventListener("visibilitychange", function() {
+                           if (document.visibilityState === "visible") {
+                               fetch("' . esc_url(admin_url('admin-ajax.php')) . '?action=mgc_check_login_state&_=" + Date.now())
+                               .then(function(r) { return r.json(); })
+                               .then(function(data) {
+                                   if (!data.logged_in || data.has_permission) {
+                                       window.location.reload();
+                                   }
+                               })
+                               .catch(function() {});
+                           }
+                       });
+                   })();
+                   </script>';
         }
 
-        // Enqueue the staff redemption scripts
-        wp_enqueue_script('mgc-staff-redemption');
+        // Store current user ID for verification
+        $current_user_id = get_current_user_id();
 
         ob_start();
+        // Pass variables to template
+        set_query_var('mgc_page_load_token', $page_load_token);
+        set_query_var('mgc_user_id', $current_user_id);
         include MGC_PLUGIN_DIR . 'templates/frontend-staff-redemption.php';
         return ob_get_clean();
+    }
+
+    /**
+     * AJAX: Check login state for staff redemption page
+     * Used to detect stale cached pages and trigger reload
+     */
+    public function ajax_check_login_state() {
+        // No caching for this response
+        nocache_headers();
+
+        $is_logged_in = is_user_logged_in();
+        $user_id = get_current_user_id();
+        $has_permission = current_user_can('manage_woocommerce');
+
+        wp_send_json([
+            'logged_in' => $is_logged_in,
+            'user_id' => $user_id,
+            'has_permission' => $has_permission,
+            'timestamp' => time()
+        ]);
     }
 
     /**

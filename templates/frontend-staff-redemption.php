@@ -591,9 +591,48 @@ $currency_symbol = html_entity_decode(get_woocommerce_currency_symbol(), ENT_QUO
 (function($) {
     'use strict';
 
+    // --- Bulletproof session state management ---
+    var expectedUserId = <?php echo intval(get_query_var('mgc_user_id', get_current_user_id())); ?>;
+    var pageLoadTime = <?php echo time(); ?>;
+    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
+
+    // Handle browser back/forward cache (bfcache)
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            // Page was loaded from bfcache - force reload to get fresh state
+            window.location.reload();
+        }
+    });
+
+    // Verify session state on visibility change (tab switching back)
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+            verifySessionState();
+        }
+    });
+
+    // Also check periodically (every 30 seconds) in case session expires
+    setInterval(verifySessionState, 30000);
+
+    function verifySessionState() {
+        fetch(ajaxUrl + '?action=mgc_check_login_state&_=' + Date.now())
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            // If user logged out or changed, reload to show correct state
+            if (!data.logged_in || data.user_id !== expectedUserId || !data.has_permission) {
+                window.location.reload();
+            }
+        })
+        .catch(function() {
+            // On network error, don't reload - just log
+            console.log('MGC: Could not verify session state');
+        });
+    }
+
+    // --- End session state management ---
+
     var currentCard = null;
     var currentBalance = 0;
-    var ajaxUrl = '<?php echo admin_url('admin-ajax.php'); ?>';
     var nonce = '<?php echo wp_create_nonce('mgc_frontend_nonce'); ?>';
     var currencySymbol = '<?php echo esc_js($currency_symbol); ?>';
 
