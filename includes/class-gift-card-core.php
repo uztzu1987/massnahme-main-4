@@ -683,33 +683,123 @@ class MGC_Core {
      * Simple server-side auth check with no-cache headers
      */
     public function staff_redemption_shortcode($atts) {
-        // Send no-cache headers to prevent any caching
-        if (!headers_sent()) {
-            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-            header('Pragma: no-cache');
-            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
-        }
-
         // Tell caching plugins not to cache this page
         if (!defined('DONOTCACHEPAGE')) {
             define('DONOTCACHEPAGE', true);
         }
 
-        // Simple server-side check - no AJAX needed
+        // Check if user is logged in - show login form on same page if not
         if (!is_user_logged_in()) {
-            // Add timestamp to bust any cached redirects
-            $return_url = add_query_arg('t', time(), get_permalink());
-            $login_url = wp_login_url($return_url);
-
-            return '<div class="mgc-staff-login-required" style="text-align: center; padding: 40px;">' .
-                   '<p>' . __('Please log in to access the staff redemption system.', 'massnahme-gift-cards') . '</p>' .
-                   '<p><a href="' . esc_url($login_url) . '" class="button" style="display: inline-block; padding: 12px 24px; background: #2271b1; color: #fff; text-decoration: none; border-radius: 4px;">' . __('Log In', 'massnahme-gift-cards') . '</a></p>' .
-                   '</div>';
+            ob_start();
+            ?>
+            <div class="mgc-staff-login">
+                <div class="mgc-staff-login-container">
+                    <h2><?php _e('Staff Login', 'massnahme-gift-cards'); ?></h2>
+                    <p class="mgc-staff-login-message"><?php _e('Please log in to access the gift card redemption system.', 'massnahme-gift-cards'); ?></p>
+                    <?php
+                    wp_login_form([
+                        'redirect' => get_permalink(),
+                        'form_id' => 'mgc-staff-login-form',
+                        'label_username' => __('Username or Email', 'massnahme-gift-cards'),
+                        'label_password' => __('Password', 'massnahme-gift-cards'),
+                        'label_remember' => __('Remember Me', 'massnahme-gift-cards'),
+                        'label_log_in' => __('Log In', 'massnahme-gift-cards'),
+                        'remember' => true,
+                    ]);
+                    ?>
+                    <p class="mgc-staff-login-lost-password">
+                        <a href="<?php echo esc_url(wp_lostpassword_url(get_permalink())); ?>"><?php _e('Lost your password?', 'massnahme-gift-cards'); ?></a>
+                    </p>
+                </div>
+                <style>
+                    .mgc-staff-login {
+                        max-width: 400px;
+                        margin: 40px auto;
+                        padding: 30px;
+                        background: #fff;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                    }
+                    .mgc-staff-login-container h2 {
+                        margin: 0 0 10px 0;
+                        font-size: 24px;
+                        color: #1a1a1a;
+                        text-align: center;
+                    }
+                    .mgc-staff-login-message {
+                        text-align: center;
+                        color: #666;
+                        margin-bottom: 25px;
+                    }
+                    #mgc-staff-login-form {
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    #mgc-staff-login-form label {
+                        display: block;
+                        margin-bottom: 5px;
+                        font-weight: 600;
+                        color: #333;
+                    }
+                    #mgc-staff-login-form input[type="text"],
+                    #mgc-staff-login-form input[type="password"] {
+                        width: 100%;
+                        padding: 12px 15px;
+                        border: 2px solid #ddd;
+                        border-radius: 8px;
+                        font-size: 15px;
+                        margin-bottom: 15px;
+                        box-sizing: border-box;
+                    }
+                    #mgc-staff-login-form input[type="text"]:focus,
+                    #mgc-staff-login-form input[type="password"]:focus {
+                        border-color: #2271b1;
+                        outline: none;
+                    }
+                    #mgc-staff-login-form .login-remember {
+                        margin-bottom: 15px;
+                    }
+                    #mgc-staff-login-form .login-remember label {
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        font-weight: normal;
+                    }
+                    #mgc-staff-login-form input[type="submit"] {
+                        background: #2271b1;
+                        color: #fff;
+                        border: none;
+                        padding: 14px 24px;
+                        border-radius: 8px;
+                        font-size: 16px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    }
+                    #mgc-staff-login-form input[type="submit"]:hover {
+                        background: #135e96;
+                    }
+                    .mgc-staff-login-lost-password {
+                        text-align: center;
+                        margin-top: 20px;
+                    }
+                    .mgc-staff-login-lost-password a {
+                        color: #2271b1;
+                        text-decoration: none;
+                    }
+                    .mgc-staff-login-lost-password a:hover {
+                        text-decoration: underline;
+                    }
+                </style>
+            </div>
+            <?php
+            return ob_get_clean();
         }
 
         if (!current_user_can('manage_woocommerce')) {
-            return '<div class="mgc-staff-no-permission" style="text-align: center; padding: 40px;">' .
-                   '<p>' . __('You do not have permission to access this page.', 'massnahme-gift-cards') . '</p>' .
+            return '<div class="mgc-staff-no-permission" style="text-align: center; padding: 40px; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 40px auto;">' .
+                   '<p style="color: #721c24;">' . __('You do not have permission to access this page. Please contact an administrator.', 'massnahme-gift-cards') . '</p>' .
                    '</div>';
         }
 
