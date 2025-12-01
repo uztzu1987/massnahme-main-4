@@ -21,7 +21,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 <div class="mgc-frontend-dashboard">
     <!-- Header -->
     <div class="mgc-fd-header">
-        <h2><?php _e('Gift Card Management', 'massnahme-gift-cards'); ?></h2>
+        <h2><?php _e('Gutscheinverwaltung', 'massnahme-gift-cards'); ?></h2>
         <span class="mgc-fd-user"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
     </div>
 
@@ -29,15 +29,17 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     <div class="mgc-fd-tabs">
         <button class="mgc-fd-tab" data-tab="create">
             <span class="mgc-fd-tab-icon">&#10010;</span>
-            <?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>
+            <?php _e('Gutschein erstellen', 'massnahme-gift-cards'); ?>
         </button>
-        <button class="mgc-fd-tab" data-tab="view">
+      <!--  REMOVED SEARCH FOR EASIER USE -TIMO
+<button class="mgc-fd-tab" data-tab="view">
             <span class="mgc-fd-tab-icon">&#128269;</span>
-            <?php _e('View Gift Card', 'massnahme-gift-cards'); ?>
+            <?php _e('Suche', 'massnahme-gift-cards'); ?>
         </button>
+-->
         <button class="mgc-fd-tab active" data-tab="redeem">
-            <span class="mgc-fd-tab-icon">&#128176;</span>
-            <?php _e('Redeem Gift Card', 'massnahme-gift-cards'); ?>
+            <span class="mgc-fd-tab-icon"> &#128269; </span>
+            <?php _e('Einlösen', 'massnahme-gift-cards'); ?>
         </button>
     </div>
 
@@ -46,32 +48,32 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     <!-- ============================================ -->
     <div class="mgc-fd-content mgc-fd-tab-content" id="mgc-tab-create">
         <div class="mgc-fd-create-form">
-            <h3><?php _e('Create New Gift Card', 'massnahme-gift-cards'); ?></h3>
+            <h3><?php _e('neuen Gutschein erstellen', 'massnahme-gift-cards'); ?></h3>
 
             <div class="mgc-fd-form-notice" id="mgc-fd-create-notice" style="display: none;"></div>
 
             <form id="mgc-fd-create-form">
                 <!-- Card Type Toggle -->
                 <div class="mgc-fd-card-type-toggle">
-                    <label class="mgc-fd-toggle-option">
-                        <input type="radio" name="card_type" value="digital" checked>
+                  <!--   <label class="mgc-fd-toggle-option">
+                        <input type="radio" name="card_type" value="digital">
                         <span class="mgc-fd-toggle-label">
                             <span class="mgc-fd-toggle-icon">&#128231;</span>
-                            <?php _e('Digital Card', 'massnahme-gift-cards'); ?>
+                            <?php _e('Digitaler Gutschein', 'massnahme-gift-cards'); ?>
                         </span>
-                    </label>
+                    </label> -->
                     <label class="mgc-fd-toggle-option">
-                        <input type="radio" name="card_type" value="physical">
+                        <input type="radio" name="card_type" value="physical" checked>
                         <span class="mgc-fd-toggle-label">
-                            <span class="mgc-fd-toggle-icon">&#127873;</span>
-                            <?php _e('Physical Card', 'massnahme-gift-cards'); ?>
+                            <span class="mgc-fd-toggle-icon">💳</span>
+                            <?php _e('Store Gutschein', 'massnahme-gift-cards'); ?>
                         </span>
                     </label>
                 </div>
 
                 <!-- Amount -->
                 <div class="mgc-fd-form-group">
-                    <label for="mgc-create-amount"><?php _e('Amount', 'massnahme-gift-cards'); ?> *</label>
+                    <label for="mgc-create-amount"><?php _e('Betrag', 'massnahme-gift-cards'); ?> *</label>
                     <div class="mgc-fd-amount-input">
                         <span class="mgc-fd-currency"><?php echo esc_html($currency_symbol); ?></span>
                         <input type="number" id="mgc-create-amount" name="amount" step="0.01" min="1" required>
@@ -85,43 +87,43 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                 </div>
 
                 <!-- Custom Code (shown for physical cards) -->
-                <div class="mgc-fd-form-group mgc-fd-physical-only" style="display: none;">
+                <div class="mgc-fd-form-group mgc-fd-physical-only" >
                     <label for="mgc-create-code">
-                        <?php _e('Card Code', 'massnahme-gift-cards'); ?> *
-                        <span class="mgc-fd-label-hint"><?php _e('(printed on physical card)', 'massnahme-gift-cards'); ?></span>
+                        <?php _e('Gutscheinnummer', 'massnahme-gift-cards'); ?>
+                        <span class="mgc-fd-label-hint"><?php _e('(ist auf dem Gutschein gedruckt)', 'massnahme-gift-cards'); ?></span>
                     </label>
-                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('e.g., PHYS-2025-ABC123', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
-                    <p class="mgc-fd-field-hint"><?php _e('Enter the code printed on the physical card. Use letters, numbers, and dashes only.', 'massnahme-gift-cards'); ?></p>
+                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('z.B.: 1234', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
+                    <p class="mgc-fd-field-hint"><?php _e('Bitte die Gutscheinnummer eintragen. Nur Zahlen, Buchstaben und Bindestriche sind erlaubt.', 'massnahme-gift-cards'); ?></p>
                 </div>
 
                 <!-- Auto-generate notice (shown for digital cards) -->
-                <div class="mgc-fd-form-group mgc-fd-digital-only">
+                <div class="mgc-fd-form-group mgc-fd-digital-only" style="display: none;">
                     <div class="mgc-fd-info-box">
                         <span class="mgc-fd-info-icon">&#9432;</span>
-                        <?php _e('A unique code will be automatically generated for this digital gift card.', 'massnahme-gift-cards'); ?>
+                        <?php _e('Für diesen digitalen Gutschein wird automatisch ein eindeutiger Code generiert.', 'massnahme-gift-cards'); ?>
                     </div>
                 </div>
 
                 <!-- Recipient Name -->
                 <div class="mgc-fd-form-group">
-                    <label for="mgc-create-recipient-name"><?php _e('Recipient Name', 'massnahme-gift-cards'); ?></label>
+                    <label for="mgc-create-recipient-name"><?php _e('Name des Empfängers', 'massnahme-gift-cards'); ?></label>
                     <input type="text" id="mgc-create-recipient-name" name="recipient_name" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
                 </div>
 
                 <!-- Recipient Email -->
                 <div class="mgc-fd-form-group">
-                    <label for="mgc-create-recipient-email"><?php _e('Recipient Email', 'massnahme-gift-cards'); ?></label>
+                    <label for="mgc-create-recipient-email"><?php _e('E-Mail des Empfängers', 'massnahme-gift-cards'); ?></label>
                     <input type="email" id="mgc-create-recipient-email" name="recipient_email" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>">
                 </div>
 
                 <!-- Message -->
                 <div class="mgc-fd-form-group">
-                    <label for="mgc-create-message"><?php _e('Personal Message', 'massnahme-gift-cards'); ?></label>
-                    <textarea id="mgc-create-message" name="message" rows="3" placeholder="<?php esc_attr_e('Optional personal message', 'massnahme-gift-cards'); ?>"></textarea>
+                    <label for="mgc-create-message"><?php _e('Persönliche Nachricht', 'massnahme-gift-cards'); ?></label>
+                    <textarea id="mgc-create-message" name="message" rows="3" placeholder="<?php esc_attr_e('Optional', 'massnahme-gift-cards'); ?>"></textarea>
                 </div>
 
                 <button type="submit" class="mgc-fd-btn mgc-fd-btn-primary mgc-fd-btn-large" id="mgc-fd-create-btn">
-                    <?php _e('Create Gift Card', 'massnahme-gift-cards'); ?>
+                    <?php _e('Gutschein erstellen', 'massnahme-gift-cards'); ?>
                 </button>
             </form>
         </div>
@@ -236,10 +238,10 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                 <input type="text"
                        id="mgc-redemption-code"
                        class="mgc-fd-code-input"
-                       placeholder="<?php esc_attr_e('Enter gift card code...', 'massnahme-gift-cards'); ?>"
+                       placeholder="<?php esc_attr_e('Gutscheinnummer eingeben', 'massnahme-gift-cards'); ?>"
                        autocomplete="off">
                 <button type="button" id="mgc-redemption-lookup" class="mgc-fd-btn mgc-fd-btn-primary">
-                    <?php _e('Look Up', 'massnahme-gift-cards'); ?>
+                    <?php _e('Prüfen', 'massnahme-gift-cards'); ?>
                 </button>
             </div>
         </div>
@@ -254,33 +256,33 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
             <!-- Balance Display -->
             <div class="mgc-fd-balance-box">
-                <span class="mgc-fd-balance-label"><?php _e('Available Balance', 'massnahme-gift-cards'); ?></span>
+                <span class="mgc-fd-balance-label"><?php _e('Verfügbares Guthaben', 'massnahme-gift-cards'); ?></span>
                 <span id="mgc-redemption-balance" class="mgc-fd-balance-value"></span>
             </div>
 
             <!-- Card Info Grid -->
             <div class="mgc-fd-card-info-grid">
                 <div class="mgc-fd-info-item">
-                    <span class="mgc-fd-info-label"><?php _e('Code', 'massnahme-gift-cards'); ?></span>
+                    <span class="mgc-fd-info-label"><?php _e('Nummer', 'massnahme-gift-cards'); ?></span>
                     <span id="mgc-redemption-card-code" class="mgc-fd-info-value mgc-fd-code"></span>
                 </div>
                 <div class="mgc-fd-info-item">
-                    <span class="mgc-fd-info-label"><?php _e('Original Amount', 'massnahme-gift-cards'); ?></span>
+                    <span class="mgc-fd-info-label"><?php _e('Ursprünglicher Betrag', 'massnahme-gift-cards'); ?></span>
                     <span id="mgc-redemption-original" class="mgc-fd-info-value"></span>
                 </div>
                 <div class="mgc-fd-info-item">
-                    <span class="mgc-fd-info-label"><?php _e('Recipient', 'massnahme-gift-cards'); ?></span>
+                    <span class="mgc-fd-info-label"><?php _e('Empfänger', 'massnahme-gift-cards'); ?></span>
                     <span id="mgc-redemption-recipient" class="mgc-fd-info-value"></span>
                 </div>
                 <div class="mgc-fd-info-item">
-                    <span class="mgc-fd-info-label"><?php _e('Expires', 'massnahme-gift-cards'); ?></span>
+                    <span class="mgc-fd-info-label"><?php _e('Gültig bis', 'massnahme-gift-cards'); ?></span>
                     <span id="mgc-redemption-expires" class="mgc-fd-info-value"></span>
                 </div>
             </div>
 
             <!-- Redemption Amount Section -->
             <div id="mgc-redemption-amount-section" class="mgc-fd-redemption-amount">
-                <h4><?php _e('Redeem Amount', 'massnahme-gift-cards'); ?></h4>
+                <h4><?php _e('Einzulösender Betrag', 'massnahme-gift-cards'); ?></h4>
 
                 <div class="mgc-fd-amount-input-wrap">
                     <span class="mgc-fd-currency-symbol"><?php echo esc_html($currency_symbol); ?></span>
@@ -297,27 +299,27 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                     <button type="button" class="mgc-fd-quick-amt" data-amount="25"><?php echo esc_html($currency_symbol); ?>25</button>
                     <button type="button" class="mgc-fd-quick-amt" data-amount="50"><?php echo esc_html($currency_symbol); ?>50</button>
                     <button type="button" class="mgc-fd-quick-amt" data-amount="100"><?php echo esc_html($currency_symbol); ?>100</button>
-                    <button type="button" class="mgc-fd-quick-amt mgc-fd-quick-full" data-amount="full"><?php _e('FULL', 'massnahme-gift-cards'); ?></button>
+                    <button type="button" class="mgc-fd-quick-amt mgc-fd-quick-full" data-amount="full"><?php _e('Alles', 'massnahme-gift-cards'); ?></button>
                 </div>
 
                 <!-- Preview -->
                 <div id="mgc-redemption-preview" class="mgc-fd-preview" style="display: none;">
                     <div class="mgc-fd-preview-row">
-                        <span><?php _e('Current:', 'massnahme-gift-cards'); ?></span>
+                        <span><?php _e('Jetztiger Betrag:', 'massnahme-gift-cards'); ?></span>
                         <span id="mgc-preview-current"></span>
                     </div>
                     <div class="mgc-fd-preview-row mgc-fd-preview-deduct">
-                        <span><?php _e('Redeem:', 'massnahme-gift-cards'); ?></span>
+                        <span><?php _e('Einlösender Betrag:', 'massnahme-gift-cards'); ?></span>
                         <span id="mgc-preview-deduct"></span>
                     </div>
                     <div class="mgc-fd-preview-row mgc-fd-preview-remaining">
-                        <span><?php _e('Remaining:', 'massnahme-gift-cards'); ?></span>
+                        <span><?php _e('Restguthaben:', 'massnahme-gift-cards'); ?></span>
                         <span id="mgc-preview-remaining"></span>
                     </div>
                 </div>
 
                 <button type="button" id="mgc-redemption-confirm" class="mgc-fd-btn mgc-fd-btn-success mgc-fd-btn-large" disabled>
-                    <?php _e('Confirm Redemption', 'massnahme-gift-cards'); ?>
+                    <?php _e('Einlösung bestätigen', 'massnahme-gift-cards'); ?>
                 </button>
             </div>
 
@@ -328,12 +330,12 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                 <table class="mgc-fd-table mgc-fd-history-table" id="mgc-redemption-history-table" style="display: none;">
                     <thead>
                         <tr>
-                            <th><?php _e('Date', 'massnahme-gift-cards'); ?></th>
-                            <th><?php _e('Type', 'massnahme-gift-cards'); ?></th>
-                            <th><?php _e('Amount', 'massnahme-gift-cards'); ?></th>
-                            <th><?php _e('Remaining', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Datum', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Art', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Betrag', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Restguthaben', 'massnahme-gift-cards'); ?></th>
                             <th><?php _e('User ID', 'massnahme-gift-cards'); ?></th>
-                            <th><?php _e('User Name', 'massnahme-gift-cards'); ?></th>
+                            <th><?php _e('Benutzer', 'massnahme-gift-cards'); ?></th>
                         </tr>
                     </thead>
                     <tbody id="mgc-redemption-history-tbody"></tbody>
@@ -343,7 +345,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
 
             <!-- Clear Button -->
             <button type="button" id="mgc-redemption-clear" class="mgc-fd-btn mgc-fd-btn-secondary mgc-fd-btn-large">
-                <?php _e('Clear / New Lookup', 'massnahme-gift-cards'); ?>
+                <?php _e('Zurücksetzen / Neue Abfrage', 'massnahme-gift-cards'); ?>
             </button>
         </div>
 
@@ -352,7 +354,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
             <div class="mgc-fd-error-icon">!</div>
             <div id="mgc-redemption-error-message" class="mgc-fd-error-text"></div>
             <button type="button" id="mgc-redemption-retry" class="mgc-fd-btn mgc-fd-btn-secondary">
-                <?php _e('Try Again', 'massnahme-gift-cards'); ?>
+                <?php _e('Erneut versuchen', 'massnahme-gift-cards'); ?>
             </button>
         </div>
     </div>
@@ -361,11 +363,11 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     <div id="mgc-redemption-success" class="mgc-fd-success-overlay" style="display: none;">
         <div class="mgc-fd-success-content">
             <div class="mgc-fd-success-icon">✓</div>
-            <div class="mgc-fd-success-title"><?php _e('Redemption Complete!', 'massnahme-gift-cards'); ?></div>
+            <div class="mgc-fd-success-title"><?php _e('Einlösung Erfolgreich!', 'massnahme-gift-cards'); ?></div>
             <div id="mgc-redemption-success-amount" class="mgc-fd-success-amount"></div>
             <div id="mgc-redemption-success-remaining" class="mgc-fd-success-remaining"></div>
             <button type="button" id="mgc-redemption-success-close" class="mgc-fd-btn mgc-fd-btn-primary">
-                <?php _e('Done', 'massnahme-gift-cards'); ?>
+                <?php _e('Erledigt', 'massnahme-gift-cards'); ?>
             </button>
         </div>
     </div>
@@ -375,12 +377,12 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
     <div id="mgc-fd-success-modal" class="mgc-fd-modal" style="display: none;">
         <div class="mgc-fd-modal-content mgc-fd-success-content">
             <div class="mgc-fd-success-icon">&#10003;</div>
-            <h3><?php _e('Gift Card Created!', 'massnahme-gift-cards'); ?></h3>
+            <h3><?php _e('Gutschein erstellt!', 'massnahme-gift-cards'); ?></h3>
             <div class="mgc-fd-success-details">
                 <p class="mgc-fd-success-code" id="mgc-success-code"></p>
                 <p class="mgc-fd-success-amount" id="mgc-success-amount"></p>
             </div>
-            <button type="button" class="mgc-fd-btn mgc-fd-btn-primary" id="mgc-fd-success-close"><?php _e('Done', 'massnahme-gift-cards'); ?></button>
+            <button type="button" class="mgc-fd-btn mgc-fd-btn-primary" id="mgc-fd-success-close"><?php _e('Erledigt', 'massnahme-gift-cards'); ?></button>
         </div>
     </div>
 </div>
