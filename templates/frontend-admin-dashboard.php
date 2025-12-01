@@ -87,11 +87,11 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
                 <!-- Custom Code (shown for physical cards) -->
                 <div class="mgc-fd-form-group mgc-fd-physical-only" style="display: none;">
                     <label for="mgc-create-code">
-                        <?php _e('Card Code', 'massnahme-gift-cards'); ?> *
-                        <span class="mgc-fd-label-hint"><?php _e('(printed on physical card)', 'massnahme-gift-cards'); ?></span>
+                        <?php _e('Gutscheinnummer', 'massnahme-gift-cards'); ?> *
+                        <span class="mgc-fd-label-hint"><?php _e('(ist auf dem Gutschein gedruckt)', 'massnahme-gift-cards'); ?></span>
                     </label>
-                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('e.g., PHYS-2025-ABC123', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]{4,50}">
-                    <p class="mgc-fd-field-hint"><?php _e('Enter the code printed on the physical card. Use letters, numbers, and dashes only.', 'massnahme-gift-cards'); ?></p>
+                    <input type="text" id="mgc-create-code" name="custom_code" placeholder="<?php esc_attr_e('z.B.: 1234', 'massnahme-gift-cards'); ?>" maxlength="50" pattern="[A-Za-z0-9\-]+">
+                    <p class="mgc-fd-field-hint"><?php _e('Bitte die Gutscheinnummer eintragen. Nur Zahlen, Buchstaben und Bindestriche sind erlaubt.', 'massnahme-gift-cards'); ?></p>
                 </div>
 
                 <!-- Auto-generate notice (shown for digital cards) -->
@@ -1521,7 +1521,7 @@ $remaining_value = $wpdb->get_var("SELECT SUM(balance) FROM $table WHERE status 
         if (isPhysical) {
             var customCode = $('#mgc-create-code').val().trim();
             if (!customCode) {
-                $notice.removeClass('success').addClass('error').text('<?php _e('Please enter the card code for the physical gift card.', 'massnahme-gift-cards'); ?>').show();
+                $notice.removeClass('success').addClass('error').text('<?php _e('Bitte die Gutscheinnummer eintragen.', 'massnahme-gift-cards'); ?>').show();
                 $('#mgc-create-code').focus();
                 return;
             }
