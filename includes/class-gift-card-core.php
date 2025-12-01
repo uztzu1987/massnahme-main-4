@@ -57,10 +57,6 @@ class MGC_Core {
         add_action('wp_ajax_mgc_frontend_list_cards', [$this, 'ajax_frontend_list_cards']);
         add_action('wp_ajax_mgc_frontend_list_transactions', [$this, 'ajax_frontend_list_transactions']);
 
-        // Staff auth check - works for both logged-in and non-logged-in users
-        add_action('wp_ajax_mgc_check_staff_auth', [$this, 'ajax_check_staff_auth']);
-        add_action('wp_ajax_nopriv_mgc_check_staff_auth', [$this, 'ajax_check_staff_auth']);
-
         // Add shipping fee for gift card delivery
         add_action('woocommerce_cart_calculate_fees', [$this, 'add_gift_card_shipping_fee']);
 
@@ -684,99 +680,42 @@ class MGC_Core {
 
     /**
      * Staff redemption shortcode for frontend POS
-     * Uses AJAX-based auth check to work even with page caching
+     * Simple server-side auth check with no-cache headers
      */
     public function staff_redemption_shortcode($atts) {
+        // Send no-cache headers to prevent any caching
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+            header('Pragma: no-cache');
+            header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+        }
+
         // Tell caching plugins not to cache this page
         if (!defined('DONOTCACHEPAGE')) {
             define('DONOTCACHEPAGE', true);
         }
 
-        // Get URLs for JavaScript
-        $ajax_url = admin_url('admin-ajax.php');
-        $login_url = wp_login_url(get_permalink());
-
-        // Always output a container that will be populated via AJAX
-        // This bypasses any page caching issues
-        ob_start();
-        ?>
-        <div id="mgc-staff-auth-container">
-            <div id="mgc-staff-loading" style="text-align: center; padding: 40px;">
-                <p><?php _e('Loading...', 'massnahme-gift-cards'); ?></p>
-            </div>
-            <div id="mgc-staff-login" style="display: none;">
-                <div class="mgc-staff-login-required">
-                    <p><?php _e('Please log in to access the staff redemption system.', 'massnahme-gift-cards'); ?></p>
-                    <a href="<?php echo esc_url($login_url); ?>" class="button"><?php _e('Log In', 'massnahme-gift-cards'); ?></a>
-                </div>
-            </div>
-            <div id="mgc-staff-no-permission" style="display: none;">
-                <div class="mgc-staff-no-permission">
-                    <p><?php _e('You do not have permission to access this page.', 'massnahme-gift-cards'); ?></p>
-                </div>
-            </div>
-            <div id="mgc-staff-content" style="display: none;">
-                <?php include MGC_PLUGIN_DIR . 'templates/frontend-staff-redemption.php'; ?>
-            </div>
-        </div>
-        <script>
-        (function() {
-            // Check auth status via AJAX (bypasses page cache)
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '<?php echo esc_js($ajax_url); ?>', true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4) {
-                    document.getElementById('mgc-staff-loading').style.display = 'none';
-
-                    if (xhr.status === 200) {
-                        try {
-                            var response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                if (response.data.status === 'authorized') {
-                                    document.getElementById('mgc-staff-content').style.display = 'block';
-                                } else if (response.data.status === 'no_permission') {
-                                    document.getElementById('mgc-staff-no-permission').style.display = 'block';
-                                } else {
-                                    document.getElementById('mgc-staff-login').style.display = 'block';
-                                }
-                            } else {
-                                document.getElementById('mgc-staff-login').style.display = 'block';
-                            }
-                        } catch (e) {
-                            document.getElementById('mgc-staff-login').style.display = 'block';
-                        }
-                    } else {
-                        document.getElementById('mgc-staff-login').style.display = 'block';
-                    }
-                }
-            };
-            xhr.send('action=mgc_check_staff_auth');
-        })();
-        </script>
-        <?php
-        return ob_get_clean();
-    }
-
-    /**
-     * AJAX handler to check staff authentication status
-     * Works for both logged-in and non-logged-in users
-     */
-    public function ajax_check_staff_auth() {
-        // No caching for this response
-        nocache_headers();
-
+        // Simple server-side check - no AJAX needed
         if (!is_user_logged_in()) {
-            wp_send_json_success(['status' => 'not_logged_in']);
-            return;
+            // Add timestamp to bust any cached redirects
+            $return_url = add_query_arg('t', time(), get_permalink());
+            $login_url = wp_login_url($return_url);
+
+            return '<div class="mgc-staff-login-required" style="text-align: center; padding: 40px;">' .
+                   '<p>' . __('Please log in to access the staff redemption system.', 'massnahme-gift-cards') . '</p>' .
+                   '<p><a href="' . esc_url($login_url) . '" class="button" style="display: inline-block; padding: 12px 24px; background: #2271b1; color: #fff; text-decoration: none; border-radius: 4px;">' . __('Log In', 'massnahme-gift-cards') . '</a></p>' .
+                   '</div>';
         }
 
         if (!current_user_can('manage_woocommerce')) {
-            wp_send_json_success(['status' => 'no_permission']);
-            return;
+            return '<div class="mgc-staff-no-permission" style="text-align: center; padding: 40px;">' .
+                   '<p>' . __('You do not have permission to access this page.', 'massnahme-gift-cards') . '</p>' .
+                   '</div>';
         }
 
-        wp_send_json_success(['status' => 'authorized']);
+        ob_start();
+        include MGC_PLUGIN_DIR . 'templates/frontend-staff-redemption.php';
+        return ob_get_clean();
     }
 
     /**
