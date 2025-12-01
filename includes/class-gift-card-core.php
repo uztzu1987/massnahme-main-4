@@ -74,6 +74,9 @@ class MGC_Core {
 
         // Ensure custom amount product exists when enabled
         add_action('init', [$this, 'maybe_create_custom_amount_product'], 20);
+
+        // Send no-cache headers for staff redemption page (prevents CDN caching)
+        add_action('template_redirect', [$this, 'send_nocache_headers_for_staff_page']);
     }
 
     /**
@@ -679,6 +682,26 @@ class MGC_Core {
     public function save_custom_amount_to_order($item, $cart_item_key, $values, $order) {
         if (isset($values['mgc_custom_amount'])) {
             $item->add_meta_data('_mgc_custom_amount', $values['mgc_custom_amount'], true);
+        }
+    }
+
+    /**
+     * Send no-cache HTTP headers for staff redemption page
+     * This prevents CDN/proxy caching which can cause login state issues
+     */
+    public function send_nocache_headers_for_staff_page() {
+        global $post;
+
+        // Check if we're on a page with our shortcode
+        if (!is_singular() || !$post) {
+            return;
+        }
+
+        // Check if this page contains our staff redemption shortcode
+        if (has_shortcode($post->post_content, 'massnahme_staff_redemption') ||
+            has_shortcode($post->post_content, 'massnahme_admin_dashboard')) {
+            // Send no-cache headers to prevent CDN caching
+            nocache_headers();
         }
     }
 
