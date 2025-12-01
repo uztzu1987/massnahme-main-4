@@ -219,7 +219,11 @@ class MGC_Email {
                 $data['order_id'] ?? ''
             ),
             'pickup-confirmation' => __('Your Gift Card is Being Prepared for Pickup', 'massnahme-gift-cards'),
-            'shipping-confirmation' => __('Your Gift Card is Being Shipped', 'massnahme-gift-cards')
+            'shipping-confirmation' => __('Your Gift Card is Being Shipped', 'massnahme-gift-cards'),
+            'physical-card-created' => sprintf(
+                __('Physical Gift Card Created - %s', 'massnahme-gift-cards'),
+                $data['code'] ?? ''
+            )
         ];
 
         return apply_filters('mgc_email_subject',
@@ -386,7 +390,74 @@ class MGC_Email {
             $headers
         );
     }
-    
+
+    /**
+     * Send physical card creation notification
+     * Sends email to both customer (if provided) and the staff member who created the card
+     */
+    public function send_physical_card_created($code, $amount, $recipient_email, $recipient_name, $created_by_user_id) {
+        global $wpdb;
+        $table = $wpdb->prefix . 'mgc_gift_cards';
+
+        $gift_card = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table WHERE code = %s",
+            $code
+        ));
+
+        if (!$gift_card) {
+            return false;
+        }
+
+        // Get the user who created the card
+        $created_by_user = get_user_by('id', $created_by_user_id);
+        $created_by_name = $created_by_user ? $created_by_user->display_name : '';
+        $created_by_email = $created_by_user ? $created_by_user->user_email : '';
+
+        $email_data = [
+            'code' => $gift_card->code,
+            'amount' => $gift_card->amount,
+            'recipient_name' => $gift_card->recipient_name ?? '',
+            'recipient_email' => $gift_card->recipient_email ?? '',
+            'created_at' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($gift_card->created_at)),
+            'expires_at' => date_i18n(get_option('date_format'), strtotime($gift_card->expires_at)),
+            'created_by_name' => $created_by_name,
+            'created_by_email' => $created_by_email
+        ];
+
+        $email_content = $this->get_email_template('physical-card-created', $email_data);
+
+        $headers = [
+            'Content-Type: text/html; charset=UTF-8',
+            'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
+        ];
+
+        $subject = $this->get_email_subject('physical-card-created', $email_data);
+        $sent_to_staff = false;
+        $sent_to_customer = false;
+
+        // Send to staff member who created the card
+        if (!empty($created_by_email)) {
+            $sent_to_staff = wp_mail(
+                $created_by_email,
+                $subject,
+                $email_content,
+                $headers
+            );
+        }
+
+        // Send to customer/recipient if email provided
+        if (!empty($recipient_email) && $recipient_email !== $created_by_email) {
+            $sent_to_customer = wp_mail(
+                $recipient_email,
+                $subject,
+                $email_content,
+                $headers
+            );
+        }
+
+        return $sent_to_staff || $sent_to_customer;
+    }
+
     /**
      * Get email attachments (PDF if enabled)
      */

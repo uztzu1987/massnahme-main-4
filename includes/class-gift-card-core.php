@@ -1216,6 +1216,17 @@ class MGC_Core {
             ]
         );
 
+        // Send email notification for physical cards
+        if ($is_physical) {
+            MGC_Email::get_instance()->send_physical_card_created(
+                $code,
+                $amount,
+                $recipient_email,
+                $recipient_name,
+                get_current_user_id()
+            );
+        }
+
         wp_send_json_success([
             'message' => __('Gift card created successfully', 'massnahme-gift-cards'),
             'id' => $card_id,
