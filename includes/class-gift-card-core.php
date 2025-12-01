@@ -989,7 +989,8 @@ class MGC_Core {
             'From: ' . get_bloginfo('name') . ' <' . get_option('woocommerce_email_from_address') . '>'
         ];
 
-        wp_mail($to, $subject, $message, $headers);
+        // Email sending disabled
+        // wp_mail($to, $subject, $message, $headers);
     }
 
     /**
